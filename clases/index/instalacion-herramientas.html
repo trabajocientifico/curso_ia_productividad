@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Instalación de herramientas · Ciencia de Datos con Python + IA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#FAFAF8;
+  --ink:#16181D;
+  --muted:#6B7280;
+  --line:#E5E5E0;
+  --accent:#16181D;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{
+  font-family:'Sora',sans-serif;
+  background:var(--bg);
+  color:var(--ink);
+  overflow:hidden;
+}
+/* ---------- estructura ---------- */
+.deck{height:100vh;position:relative}
+.slide{
+  position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  padding:5vh 7vw 10vh;
+  opacity:0;visibility:hidden;
+  transform:translateY(18px);
+  transition:opacity .5s ease,transform .5s ease,visibility .5s;
+}
+.slide.active{opacity:1;visibility:visible;transform:translateY(0)}
+.slide-inner{
+  display:grid;
+  grid-template-columns:minmax(200px,300px) 1fr;
+  gap:5vw;
+  align-items:center;
+  width:100%;
+  max-width:1150px;
+}
+/* ---------- icono ---------- */
+.icon-box{display:flex;align-items:center;justify-content:center}
+.icon-box svg{width:100%;max-width:260px;height:auto;overflow:visible}
+.slide .draw{stroke-dasharray:1200;stroke-dashoffset:1200}
+.slide.active .draw{animation:draw 1.6s ease forwards}
+.slide .fillfade{opacity:0}
+.slide.active .fillfade{animation:fadein .8s ease .9s forwards}
+.slide.active .float{animation:float 5s ease-in-out 1.8s infinite}
+@keyframes draw{to{stroke-dashoffset:0}}
+@keyframes fadein{to{opacity:1}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+/* ---------- texto ---------- */
+.eyebrow{
+  font-family:'JetBrains Mono',monospace;
+  font-size:.78rem;letter-spacing:.12em;
+  color:var(--accent);
+  margin-bottom:.8rem;
+  display:flex;align-items:center;gap:.6rem;
+}
+.eyebrow::before{content:"";width:26px;height:2px;background:var(--accent)}
+h1,h2{font-weight:800;line-height:1.08;letter-spacing:-.02em}
+h1{font-size:clamp(2.4rem,6vw,4.4rem)}
+h2{font-size:clamp(1.8rem,3.8vw,2.8rem);margin-bottom:.4rem}
+.sub{color:var(--muted);font-size:clamp(.92rem,1.4vw,1.05rem);margin-bottom:1.4rem;max-width:52ch}
+/* ---------- paso a paso ---------- */
+.steps{list-style:none;display:flex;flex-direction:column;gap:.55rem;max-width:60ch}
+.step{
+  display:flex;gap:.9rem;align-items:flex-start;
+  padding:.55rem .8rem;border-radius:12px;
+  opacity:.18;transform:translateX(-6px);
+  transition:opacity .4s ease,transform .4s ease,background .4s ease;
+}
+.step.revealed{opacity:1;transform:translateX(0)}
+.step.current{background:color-mix(in srgb,var(--accent) 7%,transparent)}
+.num{
+  font-family:'JetBrains Mono',monospace;font-size:.75rem;font-weight:600;
+  width:26px;height:26px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  border:1.5px solid var(--accent);border-radius:50%;color:var(--accent);
+  margin-top:.1rem;
+  transition:background .3s,color .3s;
+}
+.step.done .num{background:var(--accent);color:var(--bg)}
+.step-body{font-size:clamp(.88rem,1.35vw,1rem);line-height:1.45}
+.step-body b{font-weight:600}
+.step-body small{display:block;color:var(--muted);font-size:.85em;margin-top:.15rem}
+code{
+  font-family:'JetBrains Mono',monospace;
+  font-size:.86em;
+  background:var(--ink);color:#F3F4F6;
+  padding:.16em .5em;border-radius:6px;
+  white-space:nowrap;
+}
+a{color:var(--accent);text-decoration:none;border-bottom:1.5px solid var(--accent)}
+.hint{
+  font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--muted);
+  margin-top:1rem;opacity:0;transition:opacity .4s;
+}
+.slide.active .hint{opacity:.8}
+/* ---------- barra tipo instalador ---------- */
+.hud{
+  position:fixed;left:0;right:0;bottom:0;
+  display:flex;align-items:center;gap:1.2rem;
+  padding:1rem 2rem;
+  font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--muted);
+  z-index:10;background:linear-gradient(transparent,var(--bg) 40%);
+}
+.bar{flex:1;height:3px;background:var(--line);border-radius:2px;overflow:hidden}
+.bar-fill{height:100%;width:0;background:var(--accent);transition:width .4s ease,background .4s ease}
+.hud .label{min-width:17ch}
+.nav{display:flex;gap:.4rem}
+.nav button{
+  font-family:inherit;font-size:.9rem;
+  border:1.5px solid var(--line);background:transparent;color:var(--ink);
+  width:34px;height:34px;border-radius:8px;cursor:pointer;
+  transition:border-color .2s;
+}
+.nav button:hover{border-color:var(--accent)}
+.nav button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* ---------- volver al índice ---------- */
+.back-link{
+  position:fixed;top:1.1rem;left:1.6rem;z-index:20;
+  font-family:'JetBrains Mono',monospace;font-size:.72rem;
+  letter-spacing:.12em;text-transform:uppercase;text-decoration:none;
+  color:var(--muted);border:1.5px solid var(--line);border-radius:100px;
+  padding:.5em 1em;background:var(--bg);
+  transition:color .2s,border-color .2s;
+}
+.back-link:hover{color:var(--ink);border-color:var(--ink)}
+.back-link:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+/* ---------- colores por herramienta ---------- */
+.s-cover{--accent:#16181D}
+.s-python{--accent:#3776AB}
+.s-vscode{--accent:#0098FF}
+.s-node{--accent:#3C873A}
+.s-claude{--accent:#C15F3C}
+.s-codebuff{--accent:#0EA47A}
+.s-git{--accent:#F05133}
+.s-github{--accent:#6E40C9}
+.s-check{--accent:#16181D}
+/* ---------- portada y cierre ---------- */
+.center .slide-inner{grid-template-columns:1fr;text-align:center;justify-items:center;max-width:840px}
+.center .eyebrow{justify-content:center}
+.center .eyebrow::before{display:none}
+.center .sub{margin:1.2rem auto 0;max-width:48ch}
+.check-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:.8rem;margin-top:2rem;width:100%;max-width:780px;
+}
+.chip{
+  border:1.5px solid var(--line);border-radius:12px;
+  padding:1rem;text-align:left;
+  font-family:'JetBrains Mono',monospace;font-size:.78rem;
+  opacity:0;transform:translateY(8px);
+}
+.slide.active .chip{animation:stepin .5s ease forwards}
+.slide.active .chip:nth-child(1){animation-delay:.25s}
+.slide.active .chip:nth-child(2){animation-delay:.37s}
+.slide.active .chip:nth-child(3){animation-delay:.49s}
+.slide.active .chip:nth-child(4){animation-delay:.61s}
+.slide.active .chip:nth-child(5){animation-delay:.73s}
+.slide.active .chip:nth-child(6){animation-delay:.85s}
+.slide.active .chip:nth-child(7){animation-delay:.97s}
+@keyframes stepin{to{opacity:1;transform:translateY(0)}}
+.chip b{display:block;font-family:'Sora',sans-serif;font-size:.95rem;margin-bottom:.3rem}
+/* ---------- responsive ---------- */
+@media (max-width:860px){
+  .slide{padding:3vh 5vw 12vh;overflow-y:auto;align-items:flex-start}
+  .slide-inner{grid-template-columns:1fr;gap:1.2rem}
+  .icon-box svg{max-width:110px}
+  .icon-box{justify-content:flex-start}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+  .slide{opacity:1;transform:none}
+  .slide:not(.active){visibility:hidden}
+  .draw{stroke-dashoffset:0!important}
+  .fillfade,.chip{opacity:1!important;transform:none!important}
+}
+</style>
+</head>
+<body>
+<a class="back-link" href="../index.html">← Índice del curso</a>
+<div class="deck" id="deck">
+
+  <!-- 1 · PORTADA -->
+  <section class="slide center s-cover" aria-label="Portada">
+    <div class="slide-inner">
+      <div class="icon-box float">
+        <svg viewBox="0 0 200 200" fill="none" aria-hidden="true" style="max-width:220px">
+          <rect class="draw" x="25" y="45" width="150" height="110" rx="14" stroke="#16181D" stroke-width="5"/>
+          <path class="draw" d="M55 85 L80 105 L55 125" stroke="#16181D" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+          <line class="draw" x1="95" y1="125" x2="140" y2="125" stroke="#16181D" stroke-width="5" stroke-linecap="round"/>
+          <circle class="fillfade" cx="48" cy="62" r="4" fill="#F05133"/>
+          <circle class="fillfade" cx="64" cy="62" r="4" fill="#F2C14E"/>
+          <circle class="fillfade" cx="80" cy="62" r="4" fill="#0EA47A"/>
+        </svg>
+      </div>
+      <div>
+        <div class="eyebrow">CIENCIA DE DATOS CON PYTHON + IA</div>
+        <h1>Instalación de<br>herramientas</h1>
+        <p class="sub">Python · Visual Studio Code · Node.js · Agentes de IA (Claude Code, Codebuff) · Git y GitHub</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 · PYTHON -->
+  <section class="slide s-python" aria-label="Python">
+    <div class="slide-inner">
+      <div class="icon-box float">
+        <svg viewBox="0 0 200 200" fill="none" aria-hidden="true">
+          <path class="draw" d="M100 25 c-30 0 -34 14 -34 24 v18 h38 v8 H52 c-12 0 -22 10 -22 26 s10 26 22 26 h14 v-20 c0 -14 12 -24 26 -24 h32 c11 0 20 -9 20 -20 V49 c0 -10 -4 -24 -34 -24 z" stroke="#3776AB" stroke-width="5" stroke-linejoin="round"/>
+          <path class="draw" d="M100 175 c30 0 34 -14 34 -24 v-18 h-38 v-8 h52 c12 0 22 -10 22 -26 s-10 -26 -22 -26 h-14 v20 c0 14 -12 24 -26 24 H76 c-11 0 -20 9 -20 20 v14 c0 10 4 24 34 24 z" stroke="#F2C14E" stroke-width="5" stroke-linejoin="round"/>
+          <circle class="fillfade" cx="84" cy="44" r="5" fill="#3776AB"/>
+          <circle class="fillfade" cx="116" cy="156" r="5" fill="#F2C14E"/>
+        </svg>
+      </div>
+      <div>
+        <div class="eyebrow">PASO 01 · LENGUAJE</div>
+        <h2>Python</h2>
+        <p class="sub">El lenguaje con el que trabajaremos todo el curso.</p>
+        <ol class="steps">
+          <li class="step"><span class="num">1</span><div class="step-body"><b>Entra a</b> <a href="https://www.python.org/downloads/" target="_blank" rel="noopener">python.org/downloads</a><small>El botón amarillo descarga la última versión estable.</small></div></li>
+          <li class="step"><span class="num">2</span><div class="step-body"><b>Ejecuta el instalador</b> descargado<small>En Mac: abre el archivo .pkg y sigue el asistente.</small></div></li>
+          <li class="step"><span class="num">3</span><div class="step-body"><b>Marca la casilla</b> <code>Add python.exe to PATH</code><small>Está abajo en la primera pantalla — es el paso que más se olvida.</small></div></li>
+          <li class="step"><span class="num">4</span><div class="step-body"><b>Haz clic en</b> <code>Install Now</code> y espera a que termine</div></li>
+          <li class="step"><span class="num">5</span><div class="step-body"><b>Abre una terminal</b><small>Windows: busca "PowerShell" · Mac: busca "Terminal".</small></div></li>
+          <li class="step"><span class="num">6</span><div class="step-body"><b>Verifica:</b> <code>python --version</code><small>Debe responder algo como <b>Python 3.13.x</b>. En Mac usa <code>python3 --version</code>.</small></div></li>
+        </ol>
+        <p class="hint">→ avanza paso a paso</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 · VS CODE -->
+  <section class="slide s-vscode" aria-label="Visual Studio Code">
+    <div class="slide-inner">
+      <div class="icon-box float">
+        <svg viewBox="0 0 200 200" fill="none" aria-hidden="true">
+          <path class="draw" d="M140 30 L165 42 V158 L140 170 L55 95 L35 112 L28 105 V95 L48 78 Z" stroke="#0098FF" stroke-width="5" stroke-linejoin="round"/>
+          <path class="draw" d="M140 30 L140 170" stroke="#0098FF" stroke-width="5"/>
+          <path class="draw" d="M140 70 L85 100 L140 130" stroke="#0098FF" stroke-width="5" stroke-linejoin="round"/>
+          <circle class="fillfade" cx="35" cy="103" r="6" fill="#0098FF"/>
+        </svg>
+      </div>
+      <div>
+        <div class="eyebrow">PASO 02 · EDITOR</div>
+        <h2>Visual Studio Code</h2>
+        <p class="sub">Nuestro entorno de trabajo: aquí escribimos y ejecutamos el código.</p>
+        <ol class="steps">
+          <li class="step"><span class="num">1</span><div class="step-body"><b>Entra a</b> <a href="https://code.visualstudio.com" target="_blank" rel="noopener">code.visualstudio.com</a> y descarga para tu sistema</div></li>
+          <li class="step"><span class="num">2</span><div class="step-body"><b>Instala con las opciones por defecto</b><small>Recomendado: marca "Agregar acción Abrir con Code al menú contextual".</small></div></li>
+          <li class="step"><span class="num">3</span><div class="step-body"><b>Abre VS Code</b> y ve al panel de extensiones<small>Icono de cuadros en la barra izquierda o <code>Ctrl+Shift+X</code>.</small></div></li>
+          <li class="step"><span class="num">4</span><div class="step-body"><b>Instala la extensión</b> <code>Python</code> (Microsoft)</div></li>
+          <li class="step"><span class="num">5</span><div class="step-body"><b>Instala la extensión</b> <code>Jupyter</code> (Microsoft)<small>Nos permitirá trabajar con notebooks dentro del editor.</small></div></li>
+          <li class="step"><span class="num">6</span><div class="step-body"><b>Abre tu carpeta de trabajo:</b> <code>Archivo → Abrir carpeta</code><small>Crea una carpeta llamada <b>curso-datos</b> para todo el curso.</small></div></li>
+        </ol>
+        <p class="hint">→ avanza paso a paso</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 · NODE.JS -->
+  <section class="slide s-node" aria-label="Node.js">
+    <div class="slide-inner">
+      <div class="icon-box float">
+        <svg viewBox="0 0 200 200" fill="none" aria-hidden="true">
+          <path class="draw" d="M100 25 L165 62 V138 L100 175 L35 138 V62 Z" stroke="#3C873A" stroke-width="5" stroke-linejoin="round"/>
+          <path class="draw" d="M75 120 V85 L100 120 V85" stroke="#3C873A" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle class="fillfade" cx="122" cy="102" r="6" fill="#3C873A"/>
+        </svg>
+      </div>
+      <div>
+        <div class="eyebrow">PASO 03 · REQUISITO PARA LOS AGENTES</div>
+        <h2>Node.js</h2>
+        <p class="sub">Los agentes de IA se instalan con npm, que viene incluido con Node.js.</p>
+        <ol class="steps">
+          <li class="step"><span class="num">1</span><div class="step-body"><b>Entra a</b> <a href="https://nodejs.org" target="_blank" rel="noopener">nodejs.org</a><small>Descarga la versión <b>LTS</b> (soporte extendido).</small></div></li>
+          <li class="step"><span class="num">2</span><div class="step-body"><b>Ejecuta el instalador</b> con las opciones por defecto<small>Siguiente → Siguiente → Instalar. No cambies nada.</small></div></li>
+          <li class="step"><span class="num">3</span><div class="step-body"><b>Cierra y vuelve a abrir la terminal</b><small>Necesario para que reconozca los nuevos comandos.</small></div></li>
+          <li class="step"><span class="num">4</span><div class="step-body"><b>Verifica:</b> <code>node --version</code> y <code>npm --version</code><small>Ambos deben responder con un número de versión.</small></div></li>
+        </ol>
+        <p class="hint">→ avanza paso a paso</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 · CLAUDE CODE -->
+  <section class="slide s-claude" aria-label="Claude Code">
+    <div class="slide-inner">
+      <div class="icon-box float">
+        <svg viewBox="0 0 200 200" fill="none" aria-hidden="true">
+          <g stroke="#C15F3C" stroke-width="5" stroke-linecap="round">
+            <line class="draw" x1="100" y1="30" x2="100" y2="72"/>
+            <line class="draw" x1="100" y1="128" x2="100" y2="170"/>
+            <line class="draw" x1="30" y1="100" x2="72" y2="100"/>
+            <line class="draw" x1="128" y1="100" x2="170" y2="100"/>
+            <line class="draw" x1="52" y1="52" x2="80" y2="80"/>
+            <line class="draw" x1="120" y1="120" x2="148" y2="148"/>
+            <line class="draw" x1="148" y1="52" x2="120" y2="80"/>
+            <line class="draw" x1="80" y1="120" x2="52" y2="148"/>
+          </g>
+          <circle class="fillfade" cx="100" cy="100" r="12" fill="#C15F3C"/>
+        </svg>
+      </div>
+      <div>
+        <div class="eyebrow">PASO 04 · AGENTE IA</div>
+        <h2>Claude Code</h2>
+        <p class="sub">Un agente de IA que escribe y ejecuta código contigo desde la terminal.</p>
+        <ol class="steps">
+          <li class="step"><span class="num">1</span><div class="step-body"><b>Crea tu cuenta en</b> <a href="https://claude.ai" target="_blank" rel="noopener">claude.ai</a> si aún no la tienes</div></li>
+          <li class="step"><span class="num">2</span><div class="step-body"><b>Instala en la terminal:</b> <code>npm install -g @anthropic-ai/claude-code</code><small>Requiere el Node.js del paso anterior.</small></div></li>
+          <li class="step"><span class="num">3</span><div class="step-body"><b>Ve a tu carpeta de proyecto:</b> <code>cd curso-datos</code><small>O abre la terminal integrada de VS Code: <code>Ctrl+Ñ</code>.</small></div></li>
+          <li class="step"><span class="num">4</span><div class="step-body"><b>Inícialo:</b> <code>claude</code></div></li>
+          <li class="step"><span class="num">5</span><div class="step-body"><b>Inicia sesión</b> con tu cuenta cuando lo pida<small>Se abrirá el navegador para autorizar el acceso.</small></div></li>
+          <li class="step"><span class="num">6</span><div class="step-body"><b>Prueba:</b> pídele algo simple<small>Ej.: "crea un archivo hola.py que salude por pantalla".</small></div></li>
+        </ol>
+        <p class="hint">→ avanza paso a paso</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 · CODEBUFF -->
+  <section class="slide s-codebuff" aria-label="Codebuff">
+    <div class="slide-inner">
+      <div class="icon-box float">
+        <svg viewBox="0 0 200 200" fill="none" aria-hidden="true">
+          <rect class="draw" x="45" y="60" width="110" height="90" rx="16" stroke="#0EA47A" stroke-width="5"/>
+          <line class="draw" x1="100" y1="60" x2="100" y2="38" stroke="#0EA47A" stroke-width="5" stroke-linecap="round"/>
+          <circle class="draw" cx="100" cy="32" r="6" stroke="#0EA47A" stroke-width="5"/>
+          <circle class="fillfade" cx="78" cy="95" r="8" fill="#0EA47A"/>
+          <circle class="fillfade" cx="122" cy="95" r="8" fill="#0EA47A"/>
+          <path class="draw" d="M78 125 q22 14 44 0" stroke="#0EA47A" stroke-width="5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div>
+        <div class="eyebrow">PASO 05 · AGENTE IA</div>
+        <h2>Codebuff</h2>
+        <p class="sub">Otro agente de código para comparar: mismas tareas, otro asistente.</p>
+        <ol class="steps">
+          <li class="step"><span class="num">1</span><div class="step-body"><b>Instala en la terminal:</b> <code>npm install -g codebuff</code><small>Usa el mismo Node.js que ya instalamos.</small></div></li>
+          <li class="step"><span class="num">2</span><div class="step-body"><b>Ve a tu carpeta de proyecto:</b> <code>cd curso-datos</code></div></li>
+          <li class="step"><span class="num">3</span><div class="step-body"><b>Ejecuta:</b> <code>codebuff</code></div></li>
+          <li class="step"><span class="num">4</span><div class="step-body"><b>Inicia sesión</b> la primera vez que lo abras<small>Te dará un enlace para crear la cuenta en el navegador.</small></div></li>
+          <li class="step"><span class="num">5</span><div class="step-body"><b>Prueba</b> el mismo ejercicio que con Claude Code<small>Así comparamos cómo responde cada agente.</small></div></li>
+        </ol>
+        <p class="hint">→ avanza paso a paso</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7 · GIT -->
+  <section class="slide s-git" aria-label="Git">
+    <div class="slide-inner">
+      <div class="icon-box float">
+        <svg viewBox="0 0 200 200" fill="none" aria-hidden="true">
+          <line class="draw" x1="70" y1="40" x2="70" y2="160" stroke="#F05133" stroke-width="5" stroke-linecap="round"/>
+          <path class="draw" d="M70 80 q0 30 50 32" stroke="#F05133" stroke-width="5" stroke-linecap="round" fill="none"/>
+          <circle class="fillfade" cx="70" cy="40" r="10" fill="#F05133"/>
+          <circle class="fillfade" cx="70" cy="160" r="10" fill="#F05133"/>
+          <circle class="fillfade" cx="130" cy="112" r="10" fill="#F05133"/>
+        </svg>
+      </div>
+      <div>
+        <div class="eyebrow">PASO 06 · CONTROL DE VERSIONES</div>
+        <h2>Git</h2>
+        <p class="sub">Guarda el historial de tu código: cada cambio queda registrado.</p>
+        <ol class="steps">
+          <li class="step"><span class="num">1</span><div class="step-body"><b>Entra a</b> <a href="https://git-scm.com/downloads" target="_blank" rel="noopener">git-scm.com/downloads</a> y descarga para tu sistema<small>En Mac suele venir instalado: prueba primero <code>git --version</code>.</small></div></li>
+          <li class="step"><span class="num">2</span><div class="step-body"><b>Instala con las opciones por defecto</b><small>Siguiente en todas las pantallas — la configuración estándar funciona bien.</small></div></li>
+          <li class="step"><span class="num">3</span><div class="step-body"><b>Verifica en una terminal nueva:</b> <code>git --version</code></div></li>
+          <li class="step"><span class="num">4</span><div class="step-body"><b>Configura tu nombre:</b> <code>git config --global user.name "Tu Nombre"</code></div></li>
+          <li class="step"><span class="num">5</span><div class="step-body"><b>Configura tu correo:</b> <code>git config --global user.email "tu@correo.com"</code><small>Usa el mismo correo con el que crearás la cuenta de GitHub.</small></div></li>
+          <li class="step"><span class="num">6</span><div class="step-body"><b>Revisa la configuración:</b> <code>git config --list</code></div></li>
+        </ol>
+        <p class="hint">→ avanza paso a paso</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8 · GITHUB -->
+  <section class="slide s-github" aria-label="GitHub">
+    <div class="slide-inner">
+      <div class="icon-box float">
+        <svg viewBox="0 0 200 200" fill="none" aria-hidden="true">
+          <circle class="draw" cx="100" cy="100" r="55" stroke="#6E40C9" stroke-width="5"/>
+          <circle class="fillfade" cx="100" cy="45" r="8" fill="#6E40C9"/>
+          <circle class="fillfade" cx="152" cy="128" r="8" fill="#6E40C9"/>
+          <circle class="fillfade" cx="48" cy="128" r="8" fill="#6E40C9"/>
+          <line class="draw" x1="100" y1="100" x2="100" y2="53" stroke="#6E40C9" stroke-width="4"/>
+          <line class="draw" x1="100" y1="100" x2="145" y2="124" stroke="#6E40C9" stroke-width="4"/>
+          <line class="draw" x1="100" y1="100" x2="55" y2="124" stroke="#6E40C9" stroke-width="4"/>
+          <circle class="fillfade" cx="100" cy="100" r="9" fill="#6E40C9"/>
+        </svg>
+      </div>
+      <div>
+        <div class="eyebrow">PASO 07 · REPOSITORIO EN LA NUBE</div>
+        <h2>GitHub</h2>
+        <p class="sub">Tu código en la nube: respaldo, colaboración y publicación de proyectos.</p>
+        <ol class="steps">
+          <li class="step"><span class="num">1</span><div class="step-body"><b>Entra a</b> <a href="https://github.com" target="_blank" rel="noopener">github.com</a> y haz clic en <b>Sign up</b></div></li>
+          <li class="step"><span class="num">2</span><div class="step-body"><b>Regístrate</b> con el mismo correo que configuraste en Git<small>Elige un nombre de usuario profesional: te acompañará años.</small></div></li>
+          <li class="step"><span class="num">3</span><div class="step-body"><b>Verifica tu correo</b> con el código que te envían</div></li>
+          <li class="step"><span class="num">4</span><div class="step-body"><b>Crea tu primer repositorio:</b> botón <b>New</b> → nómbralo <code>curso-datos</code><small>Márcalo como público y agrega un README.</small></div></li>
+          <li class="step"><span class="num">5</span><div class="step-body"><b>Al final del curso</b> publicaremos aquí tus aplicativos con GitHub Pages</div></li>
+        </ol>
+        <p class="hint">→ avanza paso a paso</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9 · CHECKLIST -->
+  <section class="slide center s-check" aria-label="Lista de verificación">
+    <div class="slide-inner">
+      <div>
+        <div class="eyebrow">VERIFICACIÓN FINAL</div>
+        <h2>Todo listo para empezar</h2>
+        <div class="check-grid">
+          <div class="chip"><b>Python</b>python --version</div>
+          <div class="chip"><b>VS Code</b>extensiones Python + Jupyter</div>
+          <div class="chip"><b>Node.js</b>node --version</div>
+          <div class="chip"><b>Claude Code</b>claude → sesión iniciada</div>
+          <div class="chip"><b>Codebuff</b>codebuff → sesión iniciada</div>
+          <div class="chip"><b>Git</b>git config --list</div>
+          <div class="chip"><b>GitHub</b>cuenta + repo curso-datos</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- barra tipo instalador -->
+<div class="hud">
+  <span class="label" id="hudLabel">instalando… 1/9</span>
+  <div class="bar"><div class="bar-fill" id="barFill"></div></div>
+  <div class="nav">
+    <button id="prev" aria-label="Anterior">←</button>
+    <button id="next" aria-label="Siguiente">→</button>
+  </div>
+</div>
+
+<script>
+const slides=[...document.querySelectorAll('.slide')];
+const fill=document.getElementById('barFill');
+const label=document.getElementById('hudLabel');
+let i=0;
+
+function stepsOf(s){return [...s.querySelectorAll('.step')]}
+
+function paintSteps(s){
+  const st=stepsOf(s);
+  st.forEach((el,k)=>{
+    el.classList.toggle('revealed',k<=(s._rev??-1));
+    el.classList.toggle('current',k===s._rev);
+    el.classList.toggle('done',k<s._rev);
+  });
+}
+
+function show(n){
+  i=Math.max(0,Math.min(slides.length-1,n));
+  slides.forEach((s,k)=>s.classList.toggle('active',k===i));
+  const s=slides[i];
+  if(s._rev===undefined)s._rev=stepsOf(s).length?0:-1;
+  paintSteps(s);
+  const pct=((i+1)/slides.length)*100;
+  fill.style.width=pct+'%';
+  const accent=getComputedStyle(s).getPropertyValue('--accent');
+  fill.style.background=accent;
+  document.documentElement.style.setProperty('--accent',accent);
+  label.textContent=(i===slides.length-1?'instalación completa ':'instalando… ')+(i+1)+'/'+slides.length;
+}
+
+/* avanzar: primero revela el siguiente paso; al terminar, pasa de diapositiva */
+function next(){
+  const s=slides[i],st=stepsOf(s);
+  if(st.length&&s._rev<st.length-1){s._rev++;paintSteps(s);}
+  else show(i+1);
+}
+function prev(){
+  const s=slides[i],st=stepsOf(s);
+  if(st.length&&s._rev>0){s._rev--;paintSteps(s);}
+  else show(i-1);
+}
+
+document.getElementById('next').addEventListener('click',next);
+document.getElementById('prev').addEventListener('click',prev);
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown'||e.key==='ArrowDown'){e.preventDefault();next();}
+  if(e.key==='ArrowLeft'||e.key==='PageUp'||e.key==='ArrowUp'){e.preventDefault();prev();}
+  if(e.key==='Home')show(0);
+  if(e.key==='End')show(slides.length-1);
+});
+document.getElementById('deck').addEventListener('click',e=>{
+  if(e.target.closest('a,button,code'))return;
+  (e.clientX>innerWidth/2)?next():prev();
+});
+show(0);
+</script>
+</body>
+</html>
