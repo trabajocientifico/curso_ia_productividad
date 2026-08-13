@@ -1,0 +1,2814 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inteligencia Artificial para la Productividad y Optimización del Trabajo · Trabajo Científico</title>
+<meta name="description" content="Curso en 6 módulos: fundamentos de IA, ingeniería de prompts, gestión documental, análisis de datos con Python desde cero, automatización de procesos y ética con proyecto integrado.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700;9..144,900&family=Inter:wght@400;500;600;700;800&family=Archivo:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<!-- Tailwind (usado por el bloque de fundamentos). Preflight desactivado: el reset lo controla este archivo. -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config = { corePlugins: { preflight: false } };</script>
+
+<!-- Skulpt · motor de Python en el navegador -->
+<script src="https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt-stdlib.js"></script>
+
+<!-- CodeMirror · editores con colores -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+
+<style>
+/* ==========================================================================
+   RESET + VARIABLES
+   Mundo A (conceptos / agentes / instalación) = paleta de 2_ia_agentes_ia
+   Mundo B (fundamentos de Python)             = paleta de 1_fundamentos-python
+   ========================================================================== */
+*{ margin:0; padding:0; box-sizing:border-box; }
+button,input,textarea,select{ font:inherit; color:inherit; }
+:root{
+  /* --- mundo A --- */
+  --bg:#0a0e1a;
+  --surface:rgba(255,255,255,.04);
+  --accent:#00f5d4;
+  --accent-deep:#00c9ae;
+  --gold:#ffd166;
+  --danger:#ff6b6b;
+  --text:#e9edf7;
+  --muted:#8b94b3;
+  --line:rgba(255,255,255,.09);
+  --claude:#d97757;
+  --codebuff:#19c37d;
+  --python:#4b8bbe;
+  --vscode:#0098ff;
+  --node:#3c873a;
+  --git:#f05133;
+  --github:#8b5cf6;
+  --font-display:'Fraunces',Georgia,serif;
+  --font-body:'Inter','Segoe UI',system-ui,-apple-system,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,'Cascadia Code',Consolas,monospace;
+  /* --- mundo B --- */
+  --ink:#0d1b18;
+  --paper:#f5efe4;
+  --moss:#1f5d4c;
+  --moss-bright:#2e8b6f;
+  --lime:#c8f25a;
+  --clay:#e8623d;
+  --amber:#f2b134;
+  --sky:#5ec8e0;
+  --slate-deep:#0b1320;
+  --slate-soft:#152033;
+  --shadow:0 18px 50px -20px rgba(0,0,0,.55);
+  --serif:'Fraunces',Georgia,serif;
+  --sans:'Archivo',sans-serif;
+  --mono:'Space Mono',monospace;
+}
+html,body{ height:100%; width:100%; overflow:hidden; background:var(--bg); color:var(--text);
+  font-family:var(--font-body); -webkit-font-smoothing:antialiased; }
+body::before{
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background:
+    radial-gradient(1100px 700px at 15% 10%, rgba(0,245,212,.07), transparent 60%),
+    radial-gradient(900px 700px at 90% 90%, rgba(66,133,244,.06), transparent 60%);
+}
+#net{ position:fixed; inset:0; z-index:0; pointer-events:none; opacity:.55; }
+
+/* ==========================================================================
+   ESCENARIO Y TRANSICIONES (motor único, estilo 2_ia_agentes_ia)
+   ========================================================================== */
+#stage{ position:relative; width:100vw; height:100vh; height:100dvh; overflow:hidden; z-index:1; }
+.slide{
+  /* el tope no baja de 104px: es lo que ocupa el rótulo de bloque fijo (top:56px),
+     que en pantallas bajas se montaba sobre la primera línea de la diapositiva */
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding:max(7vh,104px) 5vw 12vh;
+  opacity:0; transform:translateX(60px) scale(.98);
+  transition:opacity .6s ease, transform .7s cubic-bezier(.2,.8,.2,1); pointer-events:none;
+}
+.slide.active{ opacity:1; transform:none; pointer-events:auto; }
+.slide.prev{ transform:translateX(-60px) scale(.98); }
+.slide-scroll{ width:100%; max-height:100%; overflow-y:auto; overflow-x:hidden; }
+/* la barra de desplazamiento se oculta: afea la proyección. El scroll sigue
+   funcionando con rueda, trackpad y teclado. */
+.slide-scroll,.py-stage{ scrollbar-width:none; -ms-overflow-style:none; }
+.slide-scroll::-webkit-scrollbar,.py-stage::-webkit-scrollbar{ width:0; height:0; display:none; }
+
+#progress{ position:fixed; top:0; left:0; height:3px; width:0; background:linear-gradient(90deg,var(--accent),var(--accent-deep)); z-index:60; transition:width .6s ease; }
+.progress-num{ position:fixed; top:56px; left:24px; z-index:50; font-size:13px; font-weight:700; color:var(--muted); letter-spacing:.18em; }
+.progress-num b{ color:var(--accent); font-size:16px; }
+.block-tag{ position:fixed; top:56px; left:50%; transform:translateX(-50%); z-index:50; font-size:10.5px;
+  letter-spacing:.22em; text-transform:uppercase; font-weight:700; color:var(--muted);
+  background:rgba(255,255,255,.04); border:1px solid var(--line); padding:6px 16px; border-radius:99px; backdrop-filter:blur(8px); }
+.block-tag.is-hidden{ display:none; }
+
+.nav-btn{ position:fixed; bottom:30px; z-index:45; display:inline-flex; align-items:center; gap:10px; padding:14px 22px; border-radius:99px; background:rgba(255,255,255,.05); backdrop-filter:blur(10px); border:1px solid var(--line); color:var(--text); cursor:pointer; font-size:14px; font-weight:700; letter-spacing:.08em; transition:all .25s ease; }
+.nav-btn:hover{ background:var(--accent); color:#041210; border-color:var(--accent); transform:translateY(-3px); }
+.nav-btn.is-disabled{ opacity:.25; pointer-events:none; filter:grayscale(.6); }
+.nav-btn .arr{ font-size:18px; }
+#prev{ left:24px; } #next{ right:24px; }
+#navHint{ position:fixed; bottom:38px; left:50%; transform:translateX(-50%); font-size:12px; color:var(--muted); letter-spacing:.18em; text-transform:uppercase; z-index:40; display:flex; align-items:center; gap:8px; padding:8px 18px; background:rgba(255,255,255,.03); border:1px solid var(--line); border-radius:99px; backdrop-filter:blur(10px); }
+#navHint kbd{ background:rgba(255,255,255,.08); padding:3px 8px; border-radius:6px; border:1px solid rgba(255,255,255,.18); font-family:inherit; color:var(--text); }
+
+/* ==========================================================================
+   TIPOGRAFÍA BASE (mundo A)
+   ========================================================================== */
+.eyebrow{ display:inline-block; font-size:11px; letter-spacing:.34em; text-transform:uppercase; color:var(--accent); padding:6px 14px; border:1px solid rgba(0,245,212,.35); border-radius:99px; margin-bottom:16px; font-weight:600; }
+h1,h2,h3{ font-family:var(--font-display); }
+h1{ font-size:clamp(40px,7vw,96px); font-weight:900; line-height:1; letter-spacing:-.02em; }
+h2{ font-size:clamp(28px,4vw,52px); font-weight:700; line-height:1.08; letter-spacing:-.01em; }
+.hl{ color:var(--accent); }
+.slide-head{ text-align:center; }
+.slide-head .lead{ margin:10px auto 0; color:var(--muted); font-size:15px; max-width:680px; line-height:1.5; }
+.slide-head .lead b{ color:var(--text); font-weight:600; }
+
+/* ==========================================================================
+   PORTADA
+   ========================================================================== */
+/* portada: sin rótulo arriba, el padding va simétrico para que el bloque
+   quede centrado de verdad en la pantalla (9vh abajo deja aire a la navegación) */
+.hero{ text-align:center; flex-direction:column; position:relative; padding:9vh 5vw; }
+.hero-top{ display:flex; align-items:center; justify-content:center; gap:14px; margin-bottom:clamp(20px,4vh,44px); opacity:0; animation:reveal .8s .15s forwards; flex-wrap:wrap; }
+.hero .orbit{ width:76px; height:76px; opacity:0; animation:reveal .8s .05s forwards, floaty 6s ease-in-out infinite 1s; filter:drop-shadow(0 0 22px rgba(0,245,212,.55)); }
+@keyframes floaty{ 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-10px);} }
+.mc-name{ position:relative; opacity:0; animation:reveal 1s .35s forwards; }
+.mc-name h1{ font-size:clamp(60px,10.8vw,178px); line-height:.88; font-weight:900; letter-spacing:-.03em; }
+.mc-name .ln1{ display:block; font-family:var(--font-body); font-size:.15em; font-weight:700; color:var(--gold); letter-spacing:.34em; text-transform:uppercase; margin-bottom:24px; }
+.mc-name .ln2{ display:block; }
+.grad{ background:linear-gradient(100deg,#00f5d4,#4285f4,#ffd166,#00f5d4); background-size:300% 100%;
+  -webkit-background-clip:text; background-clip:text; color:transparent; animation:shimmer 7s linear infinite; text-shadow:0 0 60px rgba(0,245,212,.25); }
+@keyframes shimmer{ to{ background-position:300% 0;} }
+.mc-name .ln3{ display:block; font-family:var(--font-display); font-style:italic; font-size:.3em; font-weight:600; margin-top:16px; color:var(--muted); letter-spacing:0; }
+@keyframes reveal{ from{opacity:0; transform:translateY(20px);} to{opacity:1; transform:none;} }
+/* firma del docente en portada */
+.hero-author{ display:flex; flex-direction:column; align-items:center; gap:11px;
+  margin-top:clamp(30px,5.5vh,58px); opacity:0; animation:reveal .8s .85s forwards; }
+.hero-author .ha-name{ font-family:var(--font-display); font-weight:600;
+  font-size:clamp(19px,2.1vw,27px); color:var(--text); letter-spacing:.01em; }
+.hero-author .ha-role{ font-size:11px; font-weight:700; letter-spacing:.3em;
+  text-transform:uppercase; color:var(--gold); }
+.hero-cta{ margin-top:clamp(28px,4.8vh,54px); opacity:0; animation:reveal .8s 1.2s forwards; display:flex; gap:14px; flex-wrap:wrap; justify-content:center; }
+.btn-primary{ display:inline-flex; align-items:center; gap:10px; padding:16px 32px; border-radius:99px; background:var(--accent); color:#041210; font-weight:800; font-size:14px; letter-spacing:.08em; text-transform:uppercase; border:none; cursor:pointer; text-decoration:none; box-shadow:0 16px 44px rgba(0,245,212,.28); transition:transform .25s; font-family:var(--font-body); animation:breath 3s ease-in-out infinite; }
+.btn-primary:hover{ transform:translateY(-3px); }
+@keyframes breath{ 0%,100%{ box-shadow:0 16px 44px rgba(0,245,212,.28);} 50%{ box-shadow:0 16px 54px rgba(0,245,212,.5);} }
+.btn-ghost{ display:inline-flex; align-items:center; gap:10px; padding:16px 26px; border-radius:99px; background:transparent; border:1px solid rgba(255,255,255,.22); color:var(--text); font-weight:600; font-size:13px; letter-spacing:.12em; text-transform:uppercase; cursor:pointer; transition:all .25s; text-decoration:none; font-family:var(--font-body); }
+.btn-ghost:hover{ border-color:var(--accent); color:var(--accent); }
+
+/* ==========================================================================
+   AGENDA · ANTES/AHORA · PANELES GENÉRICOS
+   ========================================================================== */
+.wrapA{ width:100%; max-width:1140px; }
+.duo{ display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:26px; align-items:stretch; }
+.pane{ padding:24px 24px; border-radius:20px; background:var(--surface); border:1px solid var(--line); transition:transform .3s, border-color .3s; }
+.pane:hover{ transform:translateY(-4px); }
+.pane .tag{ display:inline-block; font-size:11px; letter-spacing:.2em; text-transform:uppercase; font-weight:700; padding:5px 12px; border-radius:99px; background:rgba(255,255,255,.06); color:var(--muted); }
+.pane h3{ font-size:24px; margin-top:12px; }
+.pane .dur{ font-size:12px; color:var(--gold); font-weight:700; letter-spacing:.1em; text-transform:uppercase; margin-top:4px; }
+.pane p{ font-size:13.5px; color:var(--muted); line-height:1.6; margin-top:10px; }
+.pane ul{ list-style:none; margin-top:14px; display:flex; flex-direction:column; gap:7px; }
+.pane ul li{ font-size:13.5px; color:var(--text); padding-left:20px; position:relative; line-height:1.4; }
+.pane ul li::before{ content:"▸"; position:absolute; left:0; color:var(--accent); }
+.pane.now{ border-color:rgba(0,245,212,.4); background:rgba(0,245,212,.04); }
+.pane.now .tag{ background:rgba(0,245,212,.12); color:var(--accent); }
+.pane.now h3{ color:var(--accent); }
+.pane.past{ border-color:rgba(255,107,107,.35); }
+.pane.past .tag{ background:rgba(255,107,107,.12); color:var(--danger); }
+.pane.gold{ border-color:rgba(255,209,102,.4); }
+.pane.gold .tag{ background:rgba(255,209,102,.12); color:var(--gold); }
+.pane.gold h3{ color:var(--gold); }
+.note-foot{ text-align:center; margin-top:22px; font-size:14px; color:var(--muted); }
+.note-foot b{ color:var(--accent); }
+
+/* --- diapositiva de perfil del docente --- */
+.pf{ width:100%; max-width:1240px; }
+.pf-grid{ display:grid; grid-template-columns:300px 1fr; gap:32px; align-items:start; }
+.pf-frame{ position:relative; border-radius:22px; overflow:hidden; border:1px solid var(--line);
+  background:var(--surface); aspect-ratio:1/1; }
+.pf-frame img{ width:100%; height:100%; object-fit:cover; display:block; }
+.pf-frame::after{ content:""; position:absolute; inset:0; border-radius:22px;
+  box-shadow:inset 0 -70px 90px -40px rgba(4,10,16,.9); pointer-events:none; }
+.pf-edu{ margin-top:18px; padding:16px 16px 14px; border-radius:18px; background:var(--surface); border:1px solid var(--line); }
+.pf-edu-t{ font-size:10px; font-weight:700; letter-spacing:.22em; text-transform:uppercase; color:var(--accent); margin-bottom:11px; }
+.pf-edu-row{ display:grid; grid-template-columns:24px 1fr; gap:2px 10px; padding:7px 0; border-top:1px solid var(--line); }
+.pf-edu-row:first-of-type{ border-top:none; }
+.pf-edu-row .n{ grid-row:span 2; font-family:var(--font-mono); font-size:10.5px; color:var(--muted); padding-top:3px; }
+.pf-edu-row .lv{ font-size:9.5px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:var(--gold); }
+.pf-edu-row .dg{ font-size:12.5px; color:var(--text); line-height:1.3; }
+.pf-edu-row.phd .dg{ color:var(--accent); font-weight:700; }
+
+.pf-social{ margin-top:14px; padding:16px 16px 14px; border-radius:18px; background:var(--surface); border:1px solid var(--line); }
+.pf-soc-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.pf-social .soc{ display:flex; align-items:center; gap:9px; padding:9px 10px; border-radius:12px;
+  background:rgba(255,255,255,.03); border:1px solid var(--line); color:var(--muted);
+  text-decoration:none; font-size:11.5px; font-weight:700; letter-spacing:.02em;
+  transition:color .22s, border-color .22s, background .22s, transform .22s; }
+.pf-social .soc svg{ width:17px; height:17px; flex:none; }
+.pf-social .soc:hover{ transform:translateY(-2px); background:rgba(255,255,255,.06); }
+.pf-social .soc.yt:hover{ color:#ff4d4d; border-color:rgba(255,77,77,.5); }
+.pf-social .soc.li:hover{ color:#4aa3ff; border-color:rgba(74,163,255,.5); }
+.pf-social .soc.ig:hover{ color:#ff6ec7; border-color:rgba(255,110,199,.5); }
+.pf-social .soc.wa:hover{ color:#3ddc84; border-color:rgba(61,220,132,.5); }
+
+.pf-name{ font-size:clamp(30px,4vw,50px); line-height:1.02; font-weight:900; letter-spacing:-.02em; margin-top:10px; }
+.pf-phd{ display:inline-block; vertical-align:super; margin-left:10px; font-family:var(--font-mono);
+  font-size:12px; font-weight:700; letter-spacing:.16em; color:var(--gold); }
+.pf-bio{ margin-top:12px; font-size:14.5px; line-height:1.65; color:var(--muted); max-width:72ch; }
+.pf-bio b{ color:var(--text); font-weight:700; }
+
+.pf-stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:20px; }
+.pf-stat{ padding:14px 14px 12px; border-radius:16px; background:var(--surface); border:1px solid var(--line); }
+.pf-stat .v{ font-family:var(--font-display); font-size:30px; font-weight:900; color:var(--accent); line-height:1; }
+.pf-stat .k{ margin-top:6px; font-size:11px; color:var(--muted); line-height:1.35; }
+
+.pf-cols{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:16px; }
+.pf-box{ padding:16px 16px 14px; border-radius:18px; background:var(--surface); border:1px solid var(--line); }
+.pf-box-t{ font-size:10px; font-weight:700; letter-spacing:.22em; text-transform:uppercase; color:var(--gold); margin-bottom:10px; }
+.pf-list{ list-style:none; display:flex; flex-direction:column; gap:9px; }
+.pf-list li{ font-size:13px; line-height:1.3; padding-left:13px; position:relative; color:var(--text); }
+.pf-list li::before{ content:""; position:absolute; left:0; top:6px; width:5px; height:5px; border-radius:50%; background:var(--accent); opacity:.65; }
+.pf-list li b{ font-weight:700; }
+.pf-list li span{ display:block; font-size:11.5px; color:var(--muted); margin-top:2px; }
+.pf-now{ display:inline-block; margin-left:6px; font-style:normal; font-size:9.5px; font-weight:700;
+  letter-spacing:.14em; text-transform:uppercase; padding:2px 8px; border-radius:99px;
+  background:rgba(0,245,212,.12); color:var(--accent); }
+.pf-inv{ margin-top:11px; padding-top:10px; border-top:1px solid var(--line); font-size:11.5px; line-height:1.45; color:var(--muted); }
+.pf-inv b{ color:var(--text); font-weight:700; }
+
+.pf-skills{ display:flex; flex-direction:column; gap:8px; margin-top:16px; }
+.pf-sk{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.pf-sk .c{ min-width:104px; font-size:9.5px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:var(--muted); }
+.pf-sk .s{ font-size:11.5px; font-weight:600; padding:5px 11px; border-radius:99px;
+  background:rgba(255,255,255,.04); border:1px solid var(--line); color:var(--text); }
+
+.pf-links{ display:flex; align-items:center; gap:10px 18px; flex-wrap:wrap; margin-top:20px; }
+.pf-links a{ font-size:12.5px; font-weight:600; color:var(--muted); text-decoration:none; transition:color .2s; }
+.pf-links a:hover{ color:var(--accent); }
+.pf-links a.go{ padding:10px 20px; border-radius:99px; background:rgba(0,245,212,.1);
+  border:1px solid rgba(0,245,212,.45); color:var(--accent); font-weight:700;
+  letter-spacing:.08em; text-transform:uppercase; font-size:11px; }
+.pf-links a.go:hover{ background:rgba(0,245,212,.18); }
+
+@media (max-width:1080px){
+  .pf-grid{ grid-template-columns:230px 1fr; gap:24px; }
+  .pf-stats{ grid-template-columns:repeat(2,1fr); }
+}
+@media (max-width:820px){
+  .pf-grid{ grid-template-columns:1fr; }
+  .pf-frame{ max-width:240px; margin:0 auto; }
+  .pf-cols{ grid-template-columns:1fr; }
+  .pf-sk .c{ min-width:0; width:100%; }
+}
+
+/* --- rejilla de los 6 módulos del curso --- */
+.mod-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:24px; }
+.mod-card{
+  padding:18px 18px 16px; border-radius:18px; background:var(--surface);
+  border:1px solid var(--line); position:relative; overflow:hidden;
+  transition:transform .3s, border-color .3s;
+}
+.mod-card::before{ content:""; position:absolute; inset:0 auto 0 0; width:3px; background:var(--accent); opacity:.5; }
+.mod-card:hover{ transform:translateY(-3px); border-color:rgba(0,245,212,.4); }
+.mod-card .mod-n{
+  font-family:var(--font-mono); font-size:11px; font-weight:700; letter-spacing:.18em;
+  color:var(--accent); text-transform:uppercase;
+}
+.mod-card h3{ font-size:17px; margin-top:7px; line-height:1.25; }
+.mod-card p{ font-size:12.5px; color:var(--muted); margin-top:8px; line-height:1.45; }
+@media (max-width:900px){ .mod-grid{ grid-template-columns:repeat(2,1fr); } }
+@media (max-width:620px){ .mod-grid{ grid-template-columns:1fr; } }
+
+/* ==========================================================================
+   ¿QUÉ ES LA IA? · anillos concéntricos
+   ========================================================================== */
+.ia{ width:100%; max-width:1140px; }
+.ia-grid{ display:grid; grid-template-columns:.95fr 1.05fr; gap:26px; margin-top:24px; align-items:center; }
+.rings{ position:relative; width:340px; height:340px; margin:0 auto; }
+.ring-l{ position:absolute; border-radius:50%; display:flex; align-items:flex-start; justify-content:center; font-size:11.5px; font-weight:800; letter-spacing:.04em; text-align:center; padding-top:12px; }
+.r1{ inset:0; background:rgba(66,133,244,.10); border:1px solid rgba(66,133,244,.45); color:#8fb4ff; }
+.r2{ inset:52px; background:rgba(0,245,212,.09); border:1px solid rgba(0,245,212,.4); color:#7ff2e3; }
+.r3{ inset:104px; background:rgba(255,209,102,.10); border:1px solid rgba(255,209,102,.45); color:var(--gold); }
+.r4{ inset:150px; background:rgba(217,119,87,.16); border:1px solid rgba(217,119,87,.55); color:#f0a488; display:grid; place-items:center; padding:0; text-align:center; line-height:1.25; animation:pulseC 2.6s ease-in-out infinite; }
+@keyframes pulseC{ 0%,100%{ box-shadow:0 0 0 0 rgba(217,119,87,.4);} 50%{ box-shadow:0 0 0 12px rgba(217,119,87,0);} }
+.rings .rdot{ position:absolute; top:50%; left:50%; width:8px; height:8px; margin:-4px; border-radius:50%; background:var(--accent); box-shadow:0 0 12px var(--accent); }
+.rings .spin{ position:absolute; inset:0; animation:spin 16s linear infinite; }
+@keyframes spin{ to{ transform:rotate(360deg);} }
+.ia-flow{ display:flex; flex-direction:column; gap:12px; }
+.ia-def{ font-size:15px; line-height:1.6; color:var(--text); padding:16px 18px; border-radius:14px; background:rgba(0,245,212,.05); border:1px solid rgba(0,245,212,.25); }
+.ia-def b{ color:var(--accent); }
+.ia-steps{ display:flex; gap:10px; align-items:stretch; }
+.ia-node{ flex:1; padding:16px 12px; border-radius:14px; background:var(--surface); border:1px solid var(--line); text-align:center; display:flex; flex-direction:column; align-items:center; gap:8px; }
+.ia-node .ic{ width:42px; height:42px; border-radius:12px; display:grid; place-items:center; background:rgba(0,245,212,.1); color:var(--accent); }
+.ia-node .ic svg{ width:22px; height:22px; }
+.ia-node h4{ font-size:13.5px; font-weight:700; font-family:var(--font-body); }
+.ia-node p{ font-size:11.5px; color:var(--muted); line-height:1.4; }
+.ia-arrow{ display:grid; place-items:center; color:var(--accent); font-size:20px; animation:nudge 1.6s ease-in-out infinite; }
+@keyframes nudge{ 0%,100%{ transform:translateX(0); opacity:.5;} 50%{ transform:translateX(3px); opacity:1;} }
+.ia-ex{ display:flex; gap:8px; flex-wrap:wrap; margin-top:4px; }
+.ia-ex span{ font-size:11.5px; padding:6px 12px; border-radius:99px; background:rgba(255,255,255,.04); border:1px solid var(--line); font-weight:600; color:var(--text); }
+
+/* ==========================================================================
+   TARJETAS DE CONCEPTO (se abren al tocar)
+   ========================================================================== */
+.def-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-top:26px; }
+.def-card{ position:relative; padding:22px 18px; border-radius:18px; background:var(--surface); border:1px solid var(--line); cursor:pointer; transition:transform .3s, border-color .3s, background .3s; display:flex; flex-direction:column; gap:8px; }
+.def-card:hover{ transform:translateY(-6px); background:rgba(255,255,255,.06); border-color:rgba(0,245,212,.4); }
+.def-card .ic2{ width:46px; height:46px; border-radius:14px; display:grid; place-items:center; background:rgba(0,245,212,.1); color:var(--accent); font-size:20px; }
+.def-card .tag2{ font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--gold); font-weight:700; }
+.def-card h3{ font-size:18px; font-family:var(--font-body); font-weight:700; }
+.def-card p{ font-size:12.5px; color:var(--muted); line-height:1.5; }
+.def-card .more{ max-height:0; overflow:hidden; opacity:0; transition:max-height .38s ease, opacity .38s ease, margin .38s; font-size:12.5px; line-height:1.5; color:var(--accent); }
+.def-card.open{ border-color:var(--accent); }
+.def-card.open .more{ max-height:220px; opacity:1; margin-top:6px; padding-top:8px; border-top:1px dashed var(--line); }
+.def-card .hintc{ margin-top:auto; font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); font-weight:700; }
+.def-card.open .hintc{ display:none; }
+
+/* ==========================================================================
+   LÍNEA DE TIEMPO
+   ========================================================================== */
+.tline{ display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin-top:34px; position:relative; }
+.tline::before{ content:""; position:absolute; top:8px; left:5%; right:5%; height:2px; background:linear-gradient(90deg,var(--line),rgba(0,245,212,.5)); }
+.tl{ position:relative; padding-top:34px; cursor:default; }
+.tl .dot{ position:absolute; top:1px; left:0; width:17px; height:17px; border-radius:50%; border:2.5px solid rgba(0,245,212,.5); background:var(--bg); transition:transform .3s, background .3s, box-shadow .3s; }
+.tl:hover .dot{ background:var(--accent); transform:scale(1.3); box-shadow:0 0 18px rgba(0,245,212,.7); }
+.tl.now .dot{ background:var(--accent); box-shadow:0 0 0 0 rgba(0,245,212,.5); animation:ping 2.2s ease-out infinite; }
+@keyframes ping{ 0%{ box-shadow:0 0 0 0 rgba(0,245,212,.5);} 100%{ box-shadow:0 0 0 18px rgba(0,245,212,0);} }
+.tl .yr{ font-family:var(--font-display); font-size:22px; font-weight:800; color:var(--text); margin-bottom:6px; }
+.tl.now .yr{ color:var(--accent); }
+.tl .ev{ font-size:12.5px; line-height:1.5; color:var(--muted); }
+.tl .ev b{ color:var(--text); }
+
+/* ==========================================================================
+   DEMO · TOKENS
+   ========================================================================== */
+.tok-grid{ display:grid; grid-template-columns:1.1fr .9fr; gap:20px; margin-top:24px; align-items:start; }
+.tok-screen{ border-radius:16px; border:1px solid var(--line); background:#050810; padding:18px; min-height:250px; }
+.tok-prompt{ background:rgba(66,133,244,.08); border-left:3px solid #4285f4; padding:11px 14px; border-radius:10px; font-size:14px; margin-bottom:16px; }
+.tok-prompt .who{ display:block; font-size:10px; letter-spacing:.18em; text-transform:uppercase; color:#8fb4ff; margin-bottom:5px; font-weight:700; }
+.tok-text{ font-family:var(--font-mono); font-size:17px; line-height:2; min-height:2.4em; }
+.tok-text .t{ background:rgba(0,245,212,.14); border:1px solid rgba(0,245,212,.3); border-radius:6px; padding:2px 7px; margin-right:5px; display:inline-block; animation:pop .32s cubic-bezier(.2,.9,.3,1.4); }
+@keyframes pop{ from{ opacity:0; transform:translateY(8px) scale(.9);} to{ opacity:1; transform:none;} }
+.tok-text .ghost{ color:var(--muted); font-family:var(--font-body); font-size:14px; }
+.cands{ display:flex; flex-wrap:wrap; gap:8px; margin-top:18px; }
+.cand{ font-family:var(--font-mono); font-size:12px; border:1px solid var(--line); border-radius:99px; padding:6px 13px; color:var(--muted); animation:reveal .35s backwards; }
+.cand.best{ border-color:var(--accent); color:var(--accent); background:rgba(0,245,212,.1); }
+.tok-side{ display:flex; flex-direction:column; gap:12px; }
+.tok-note{ padding:15px 17px; border-radius:14px; background:var(--surface); border:1px solid var(--line); font-size:13px; line-height:1.55; color:var(--muted); }
+.tok-note h4{ font-family:var(--font-body); font-size:13px; font-weight:800; color:var(--accent); margin-bottom:5px; letter-spacing:.04em; }
+.tok-note.warn{ border-color:rgba(255,107,107,.35); } .tok-note.warn h4{ color:var(--danger); }
+.tok-note b{ color:var(--text); }
+.tok-controls{ display:flex; gap:9px; flex-wrap:wrap; }
+.mini-btn{ padding:11px 18px; border-radius:99px; font-size:12px; font-weight:700; letter-spacing:.06em; cursor:pointer; border:1px solid var(--line); background:var(--surface); color:var(--text); transition:all .25s; }
+.mini-btn:hover{ border-color:var(--accent); color:var(--accent); }
+.mini-btn.on{ background:var(--accent); color:#041210; border-color:var(--accent); }
+.mini-btn:disabled{ opacity:.35; cursor:not-allowed; }
+
+/* ==========================================================================
+   IA vs AGENTE
+   ========================================================================== */
+.cmp2{ width:100%; max-width:1120px; }
+.cmp2-grid{ display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:26px; align-items:stretch; }
+.cmp2-panel{ padding:26px 24px; border-radius:20px; background:var(--surface); border:1px solid var(--line); display:flex; flex-direction:column; align-items:center; text-align:center; transition:transform .3s, border-color .3s; }
+.cmp2-panel:hover{ transform:translateY(-4px); }
+.cmp2-panel.agent{ border-color:rgba(0,245,212,.4); background:rgba(0,245,212,.04); }
+.cmp2-panel .tag{ font-size:11px; letter-spacing:.2em; text-transform:uppercase; font-weight:700; padding:5px 12px; border-radius:99px; background:rgba(255,255,255,.06); color:var(--muted); }
+.cmp2-panel.agent .tag{ background:rgba(0,245,212,.12); color:var(--accent); }
+.cmp2-panel h3{ font-size:22px; margin-top:10px; }
+.cmp2-panel .role{ font-size:12.5px; color:var(--muted); margin-top:3px; font-style:italic; }
+.flow{ display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap; margin-top:26px; min-height:150px; }
+.flow-node{ display:flex; flex-direction:column; align-items:center; gap:6px; padding:12px 10px; border-radius:14px; background:rgba(255,255,255,.04); border:1px solid var(--line); min-width:78px; }
+.flow-node .fi{ width:34px; height:34px; border-radius:10px; display:grid; place-items:center; background:rgba(255,255,255,.06); }
+.flow-node .fi svg{ width:20px; height:20px; color:var(--muted); }
+.flow-node span{ font-size:11.5px; font-weight:600; color:var(--text); }
+.flow-arr{ color:var(--muted); font-size:18px; animation:nudge 1.6s ease-in-out infinite; }
+.flow-node.manual .fi{ background:rgba(255,107,107,.12); } .flow-node.manual .fi svg{ color:var(--danger); }
+.loop{ position:relative; width:260px; height:260px; margin:16px auto 0; }
+.loop .ring{ position:absolute; inset:8px; border-radius:50%; border:2px dashed rgba(0,245,212,.4); animation:spin 20s linear infinite; }
+.loop .orbit-dot{ position:absolute; inset:8px; animation:spin 6s linear infinite; }
+.loop .orbit-dot::before{ content:""; position:absolute; top:-7px; left:50%; transform:translateX(-50%); width:13px; height:13px; border-radius:50%; background:var(--accent); box-shadow:0 0 16px var(--accent); }
+.loop .center{ position:absolute; inset:33%; border-radius:50%; background:rgba(0,245,212,.1); border:1px solid rgba(0,245,212,.4); display:grid; place-items:center; text-align:center; line-height:1.15; font-weight:800; font-size:12px; color:var(--accent); }
+.loop .node{ position:absolute; padding:7px 13px; border-radius:99px; background:#0d1322; border:1px solid var(--line); font-size:12px; font-weight:700; white-space:nowrap; transform:translate(-50%,-50%); }
+.loop .n-top{ top:4%; left:50%; } .loop .n-right{ top:50%; left:96%; } .loop .n-bot{ top:96%; left:50%; } .loop .n-left{ top:50%; left:4%; }
+.loop .node b{ color:var(--accent); }
+.cmp2-panel .tools{ display:flex; gap:8px; margin-top:22px; flex-wrap:wrap; justify-content:center; }
+.cmp2-panel .tools span{ font-size:11px; padding:5px 12px; border-radius:99px; background:rgba(0,245,212,.08); border:1px solid rgba(0,245,212,.22); color:var(--accent); font-weight:600; }
+.cmp2-note{ text-align:center; margin-top:22px; font-size:14px; color:var(--muted); }
+.cmp2-note b{ color:var(--accent); }
+
+/* ==========================================================================
+   TRANSFORMACIÓN
+   ========================================================================== */
+.tf{ width:100%; max-width:1140px; }
+.tf-diag{ display:grid; grid-template-columns:1fr 56px 1.05fr 56px 1fr; align-items:center; gap:8px; margin-top:30px; }
+.tf-col{ display:flex; flex-direction:column; gap:10px; }
+.tf-col .col-label{ font-size:10.5px; letter-spacing:.22em; text-transform:uppercase; color:var(--muted); font-weight:700; text-align:center; margin-bottom:2px; }
+.tf-item{ display:flex; align-items:center; gap:11px; padding:12px 14px; border-radius:13px; background:var(--surface); border:1px solid var(--line); transition:transform .25s, border-color .25s; }
+.tf-item:hover{ transform:translateX(3px); border-color:rgba(0,245,212,.35); }
+.tf-col.out .tf-item:hover{ transform:translateX(-3px); }
+.tf-item .ti{ width:34px; height:34px; min-width:34px; border-radius:9px; display:grid; place-items:center; background:rgba(255,255,255,.05); }
+.tf-item .ti svg{ width:19px; height:19px; color:var(--muted); }
+.tf-col.out .tf-item .ti{ background:rgba(0,245,212,.1); } .tf-col.out .tf-item .ti svg{ color:var(--accent); }
+.tf-item span{ font-size:13px; font-weight:600; }
+.tf-arrows{ display:grid; place-items:center; color:var(--accent); }
+.tf-arrows svg{ width:30px; height:30px; animation:nudge 1.6s ease-in-out infinite; }
+.tf-hub{ display:flex; flex-direction:column; align-items:center; justify-content:center; padding:26px 18px; border-radius:20px; background:rgba(0,245,212,.05); border:1px solid rgba(0,245,212,.35); position:relative; }
+.tf-hub .halo{ position:absolute; inset:0; border-radius:20px; animation:halo 2.6s ease-out infinite; }
+@keyframes halo{ 0%{ box-shadow:0 0 0 0 rgba(0,245,212,.3);} 100%{ box-shadow:0 0 0 26px rgba(0,245,212,0);} }
+.tf-hub .hub-ic{ width:58px; height:58px; border-radius:16px; display:grid; place-items:center; background:var(--accent); color:#041210; }
+.tf-hub .hub-ic svg{ width:34px; height:34px; }
+.tf-hub h3{ font-size:22px; margin-top:12px; color:var(--accent); }
+.tf-hub p{ font-size:11.5px; color:var(--muted); margin-top:3px; letter-spacing:.06em; text-transform:uppercase; font-weight:700; }
+.tf-foot{ text-align:center; margin-top:24px; font-size:14px; color:var(--muted); }
+.tf-foot b{ color:var(--gold); }
+
+/* ==========================================================================
+   CIENCIA DE DATOS · VENN
+   ========================================================================== */
+.ds-grid{ display:grid; grid-template-columns:1fr 1fr; gap:30px; margin-top:24px; align-items:center; }
+.venn{ position:relative; width:min(100%,380px); aspect-ratio:1; margin:0 auto; }
+.vc{ position:absolute; width:62%; aspect-ratio:1; border-radius:50%; display:flex; align-items:center; justify-content:center; text-align:center; font-size:12px; font-weight:800; line-height:1.25; padding:14%; }
+.vc.cs{ top:0; left:19%; background:rgba(66,133,244,.22); border:1px solid rgba(66,133,244,.5); color:#a9c5ff; animation:vfloat 7s ease-in-out infinite; }
+.vc.math{ bottom:2%; left:0; background:rgba(255,209,102,.18); border:1px solid rgba(255,209,102,.5); color:var(--gold); animation:vfloat 7s ease-in-out infinite .8s; }
+.vc.biz{ bottom:2%; right:0; background:rgba(217,119,87,.2); border:1px solid rgba(217,119,87,.5); color:#f0a488; animation:vfloat 7s ease-in-out infinite 1.6s; }
+@keyframes vfloat{ 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-7px);} }
+.vc-center{ position:absolute; left:50%; top:55%; transform:translate(-50%,-50%); z-index:5; text-align:center;
+  font-family:var(--font-display); font-weight:900; font-size:15px; color:var(--accent); text-shadow:0 0 24px rgba(0,245,212,.6); }
+.uses{ display:flex; flex-direction:column; gap:12px; }
+.use{ display:flex; gap:13px; align-items:flex-start; padding:13px 15px; border-radius:14px; background:var(--surface); border:1px solid var(--line); transition:transform .25s, border-color .25s; }
+.use:hover{ transform:translateX(4px); border-color:rgba(0,245,212,.35); }
+.use .mark{ width:30px; height:30px; min-width:30px; border-radius:50%; display:grid; place-items:center; background:rgba(0,245,212,.12); color:var(--accent); font-family:var(--font-display); font-weight:800; font-size:14px; }
+.use h4{ font-family:var(--font-body); font-size:14px; font-weight:700; }
+.use p{ font-size:12.5px; color:var(--muted); line-height:1.45; margin-top:2px; }
+
+/* ==========================================================================
+   ALGORITMO · demo por pasos + terminal
+   ========================================================================== */
+.algo-grid{ display:grid; grid-template-columns:.95fr 1.05fr; gap:24px; margin-top:24px; align-items:start; }
+.algo-txt{ display:flex; flex-direction:column; gap:14px; }
+.algo-txt p{ font-size:14.5px; line-height:1.6; color:var(--muted); }
+.algo-txt p b{ color:var(--text); }
+.algo-list{ list-style:none; display:flex; flex-direction:column; gap:9px; }
+.algo-list li{ font-size:13.5px; padding:11px 14px; border-radius:12px; background:var(--surface); border:1px solid var(--line); }
+.algo-list li b{ color:var(--accent); }
+.code-pane{ border-radius:16px; overflow:hidden; border:1px solid var(--line); background:#050810; }
+.code-bar{ display:flex; align-items:center; gap:8px; padding:12px 16px; background:rgba(255,255,255,.03); border-bottom:1px solid var(--line); }
+.code-bar .d{ width:11px; height:11px; border-radius:50%; }
+.code-bar .d1{ background:#ff5f57; } .code-bar .d2{ background:#febc2e; } .code-bar .d3{ background:#28c840; }
+.code-bar .ttl{ margin-left:8px; font-family:var(--font-mono); font-size:12px; color:var(--muted); }
+.code-body{ padding:16px 18px; font-family:var(--font-mono); font-size:13.5px; line-height:1.75; }
+.cline{ transition:opacity .4s ease, transform .4s ease; white-space:pre-wrap; }
+.cline.off{ opacity:0; transform:translateX(-10px); height:0; overflow:hidden; }
+.cm-c{ color:#6272a4; } .cm-k{ color:#ff79c6; } .cm-f{ color:#8be9fd; } .cm-n{ color:#bd93f9; } .cm-s{ color:#f1fa8c; }
+.code-actions{ display:flex; gap:9px; flex-wrap:wrap; padding:0 18px 16px; }
+.term-out2{ background:#000; border-top:1px solid var(--line); padding:13px 18px; font-family:var(--font-mono); font-size:13px; line-height:1.7; color:var(--accent); white-space:pre-wrap; min-height:76px; }
+.term-out2:empty::before{ content:"▸ la salida aparecerá aquí"; color:#3d4560; }
+
+/* ==========================================================================
+   PROMPT → CÓDIGO
+   ========================================================================== */
+.demo-grid{ display:grid; grid-template-columns:1fr 1.05fr; gap:20px; margin-top:22px; align-items:start; }
+.chips{ display:flex; flex-wrap:wrap; gap:9px; }
+.chipb{ font-size:12.5px; font-weight:600; border:1px solid var(--line); background:var(--surface); border-radius:99px; padding:9px 15px; cursor:pointer; transition:all .25s; }
+.chipb:hover{ border-color:var(--accent); color:var(--accent); }
+.chipb.on{ background:var(--accent); color:#041210; border-color:var(--accent); font-weight:800; }
+.prompt-box{ margin-top:14px; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:15px 17px; font-size:14px; line-height:1.6; min-height:96px; }
+.prompt-box .who2{ display:block; font-size:10px; letter-spacing:.18em; text-transform:uppercase; color:#8fb4ff; margin-bottom:6px; font-weight:700; }
+
+/* ==========================================================================
+   ESTACIÓN DE TRABAJO · tarjetas de herramientas
+   ========================================================================== */
+.ag-wrap{ width:100%; max-width:1200px; }
+.tool-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:13px; margin-top:26px; }
+.ag-card{ position:relative; padding:22px 16px; border-radius:18px; background:var(--surface); border:1px solid var(--line); display:flex; flex-direction:column; align-items:center; gap:9px; text-align:center; cursor:pointer; transition:transform .3s, border-color .3s, background .3s; }
+.ag-card:hover{ transform:translateY(-6px); background:rgba(255,255,255,.06); }
+.ag-card .step-idx{ position:absolute; top:12px; left:14px; font-family:var(--font-display); font-size:14px; font-weight:700; color:var(--muted); }
+.ag-logo{ width:56px; height:56px; border-radius:16px; display:grid; place-items:center; margin-top:6px; font-weight:800; font-size:19px; letter-spacing:-.02em; }
+.ag-logo i{ font-size:24px; }
+.ag-card h3{ font-size:17px; font-weight:700; font-family:var(--font-body); }
+.ag-card .maker{ font-size:10.5px; color:var(--muted); letter-spacing:.1em; text-transform:uppercase; font-weight:700; margin-top:-4px; }
+.ag-card .see{ margin-top:auto; font-size:11.5px; font-weight:700; color:var(--accent); letter-spacing:.06em; }
+.t-python .ag-logo{ background:rgba(75,139,190,.16); color:var(--python); } .ag-card.t-python:hover{ border-color:var(--python); }
+.t-vscode .ag-logo{ background:rgba(0,152,255,.16); color:var(--vscode); } .ag-card.t-vscode:hover{ border-color:var(--vscode); }
+.t-node   .ag-logo{ background:rgba(60,135,58,.2);  color:#5fc45c; }        .ag-card.t-node:hover{ border-color:#5fc45c; }
+.t-claude .ag-logo{ background:rgba(217,119,87,.16); color:var(--claude); } .ag-card.t-claude:hover{ border-color:var(--claude); }
+.t-codebuff .ag-logo{ background:rgba(25,195,125,.16); color:var(--codebuff); } .ag-card.t-codebuff:hover{ border-color:var(--codebuff); }
+.t-git    .ag-logo{ background:rgba(240,81,51,.16); color:var(--git); }     .ag-card.t-git:hover{ border-color:var(--git); }
+.t-github .ag-logo{ background:rgba(139,92,246,.16); color:var(--github); } .ag-card.t-github:hover{ border-color:var(--github); }
+.ag-others{ margin-top:18px; padding:14px 18px; border-radius:16px; background:rgba(255,255,255,.02); border:1px dashed var(--line); }
+.ag-others .ol{ font-size:10.5px; letter-spacing:.18em; text-transform:uppercase; color:var(--muted); font-weight:700; margin-bottom:11px; text-align:center; }
+.ag-others .ol b{ color:var(--text); }
+.ag-others-grid{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; }
+.oth{ display:inline-flex; align-items:center; gap:8px; padding:7px 13px; border-radius:99px; background:rgba(255,255,255,.03); border:1px solid var(--line); font-size:12px; font-weight:600; transition:transform .2s, border-color .2s; }
+.oth:hover{ transform:translateY(-2px); border-color:rgba(255,255,255,.25); }
+.oth i{ width:20px; height:20px; min-width:20px; border-radius:6px; display:grid; place-items:center; font-size:9px; font-weight:800; color:#fff; font-style:normal; letter-spacing:-.02em; }
+
+/* ==========================================================================
+   INSTALACIÓN INTERACTIVA · pestañas + terminal que escribe
+   ========================================================================== */
+.inst2{ width:100%; max-width:1150px; --brand:var(--python); }
+.inst-tabs{ display:flex; gap:8px; justify-content:center; margin-top:20px; flex-wrap:wrap; }
+.inst-tab{ display:inline-flex; align-items:center; gap:8px; padding:10px 15px; border-radius:99px; background:var(--surface); border:1px solid var(--line); color:var(--muted); cursor:pointer; font-family:var(--font-body); font-size:12.5px; font-weight:700; transition:all .25s; }
+.inst-tab .tl{ width:21px; height:21px; border-radius:7px; display:grid; place-items:center; font-size:9.5px; font-weight:800; color:#041210; }
+.inst-tab.active{ color:var(--text); border-color:var(--brand); background:color-mix(in srgb, var(--brand) 14%, transparent); }
+.inst-body2{ display:grid; grid-template-columns:1.1fr .9fr; gap:20px; margin-top:20px; align-items:stretch; }
+.term{ border-radius:16px; overflow:hidden; border:1px solid var(--line); background:#050810; display:flex; flex-direction:column; min-height:296px; }
+.term-bar{ display:flex; align-items:center; gap:8px; padding:12px 16px; background:rgba(255,255,255,.03); border-bottom:1px solid var(--line); }
+.term-bar .tl-dot{ width:11px; height:11px; border-radius:50%; }
+.term-bar .d1{ background:#ff5f57; } .term-bar .d2{ background:#febc2e; } .term-bar .d3{ background:#28c840; }
+.term-bar .term-title{ margin-left:8px; font-family:var(--font-mono); font-size:12px; color:var(--muted); }
+.term-body{ flex:1; padding:16px 18px; font-family:var(--font-mono); font-size:13px; line-height:1.7; overflow-y:auto; }
+.term-line{ white-space:pre-wrap; word-break:break-word; }
+.term-prompt{ color:var(--brand); font-weight:700; }
+.term-cmd{ color:var(--text); }
+.term-cmd::after{ content:"▋"; color:var(--brand); animation:blink 1s step-end infinite; margin-left:1px; }
+.term-line.done .term-cmd::after{ content:""; }
+@keyframes blink{ 50%{ opacity:0;} }
+.term-out{ color:var(--muted); padding-left:2px; }
+.term-out.ok{ color:var(--accent); }
+.inst-side{ display:flex; flex-direction:column; gap:12px; }
+.inst-meta2{ display:flex; gap:9px; flex-wrap:wrap; }
+.meta-chip{ flex:1; min-width:118px; padding:11px 13px; border-radius:13px; background:var(--surface); border:1px solid var(--line); }
+.meta-chip .k{ font-size:9.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); font-weight:700; }
+.meta-chip .v{ font-size:13px; font-weight:700; margin-top:4px; color:var(--brand); }
+.inst-steps{ list-style:none; display:flex; flex-direction:column; gap:7px; }
+.inst-steps li{ display:flex; align-items:flex-start; gap:11px; padding:10px 13px; border-radius:12px; background:var(--surface); border:1px solid var(--line); font-size:12.8px; font-weight:600; line-height:1.4; opacity:0; transform:translateX(10px); animation:stepIn .4s forwards; }
+.inst-steps li .sn{ width:24px; height:24px; min-width:24px; border-radius:50%; display:grid; place-items:center; font-family:var(--font-display); font-weight:700; font-size:12px; background:color-mix(in srgb, var(--brand) 20%, transparent); color:var(--brand); }
+.inst-steps li small{ display:block; font-weight:400; color:var(--muted); font-size:11.5px; margin-top:2px; }
+.inst-steps code{ font-family:var(--font-mono); font-size:11.5px; background:rgba(255,255,255,.08); padding:1px 6px; border-radius:5px; color:var(--accent); }
+@keyframes stepIn{ to{ opacity:1; transform:none;} }
+.checks{ display:grid; grid-template-columns:repeat(4,1fr); gap:11px; margin-top:26px; }
+.check{ padding:15px 16px; border-radius:14px; background:var(--surface); border:1px solid var(--line); transition:border-color .25s, transform .25s; }
+.check:hover{ border-color:rgba(0,245,212,.4); transform:translateY(-3px); }
+.check b{ display:block; font-size:14px; font-weight:700; margin-bottom:5px; color:var(--text); }
+.check span{ font-family:var(--font-mono); font-size:11.5px; color:var(--accent); }
+
+/* ==========================================================================
+   MUNDO B · FUNDAMENTOS DE PYTHON (estilo 1_fundamentos-python.html)
+   Todo va anidado bajo .s-py para no chocar con el mundo A.
+   ========================================================================== */
+.slide.s-py{ padding:0; background:#0f172a; align-items:stretch; justify-content:stretch; }
+.s-py{ --line:rgba(245,239,228,.12); color:#f5efe4; font-family:var(--sans); }
+.py-stage{ width:100%; height:100%; overflow-y:auto; overflow-x:hidden; display:flex; flex-direction:column;
+  padding:4.5rem 1.5rem 6rem; }
+@media (min-width:768px){ .py-stage{ padding:4.5rem 3rem 6rem; } }
+@media (min-width:1024px){ .py-stage{ padding:4.5rem 5rem 6rem; } }
+.s-py .code-font{ font-family:var(--mono); }
+.s-py .serif-title{ font-family:var(--serif); font-weight:900; letter-spacing:-.02em; line-height:.98; }
+.s-py .serif-h2{ font-family:var(--serif); font-weight:900; letter-spacing:-.02em; line-height:1; }
+.s-py .em{ font-family:var(--serif); font-style:italic; color:var(--amber); }
+.s-py .hl{ background:linear-gradient(transparent 62%,var(--lime) 62%); color:#0d1b18; padding:0 .15em; border-radius:3px; }
+.s-py .kicker{ font-family:var(--mono); font-size:.72rem; letter-spacing:.28em; text-transform:uppercase;
+  color:var(--lime); display:inline-flex; align-items:center; gap:.6em; }
+.s-py .kicker::before{ content:""; width:34px; height:2px; background:currentColor; display:inline-block; }
+.s-py h2,.s-py h3{ font-family:var(--serif); }
+.s-py code{ font-family:var(--mono); font-size:.9em; color:var(--amber); }
+.s-py p code,.s-py li code{ background:rgba(245,239,228,.08); padding:.1em .4em; border-radius:4px; }
+
+/* ventana IDE */
+.ide-window{ background:#282a36; border-radius:8px; box-shadow:0 10px 25px rgba(0,0,0,.5); border:1px solid #44475a; display:flex; flex-direction:column; overflow:hidden; }
+.ide-header{ background:#21222c; padding:8px 12px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #191a21; }
+.ide-dots{ display:flex; gap:6px; }
+.ide-dot{ width:12px; height:12px; border-radius:50%; }
+.ide-dot.red{ background:#ff5f56; } .ide-dot.yellow{ background:#ffbd2e; } .ide-dot.green{ background:#27c93f; }
+.CodeMirror{ font-family:'JetBrains Mono',monospace; font-size:15px; height:auto; min-height:120px; }
+.CodeMirror-lines{ padding:10px 0; }
+.CodeMirror-gutters{ border-right:1px solid #44475a !important; background-color:#282a36 !important; }
+.console-output{ background:#000; color:#22c55e; padding:12px 15px; min-height:80px; max-height:150px; overflow-y:auto; border-top:1px solid #44475a; white-space:pre-wrap; }
+.run-btn{ background:#2563eb; color:#fff; padding:4px 12px; border-radius:4px; font-size:.8rem; font-weight:700; display:flex; align-items:center; gap:6px; transition:background .2s; border:none; cursor:pointer; }
+.run-btn:hover{ background:#1d4ed8; }
+.reto-card{ background:linear-gradient(145deg,#152033,#0b1320); box-shadow:0 15px 30px rgba(0,0,0,.4);
+  border:1px solid rgba(200,242,90,.18); position:relative; overflow:hidden; }
+.reto-card::before{ content:""; position:absolute; top:0; left:0; right:0; height:3px;
+  background:linear-gradient(90deg,var(--moss),var(--lime),var(--amber)); }
+.toc-card{ transition:.25s cubic-bezier(.2,.8,.2,1); position:relative; overflow:hidden; }
+.toc-card:hover{ transform:translateY(-4px); border-color:var(--lime) !important; }
+.toc-card::after{ content:""; position:absolute; left:0; top:0; bottom:0; width:3px;
+  background:linear-gradient(180deg,var(--moss),var(--lime)); transform:scaleY(0); transform-origin:top; transition:.3s; }
+.toc-card:hover::after{ transform:scaleY(1); }
+.ide-label{ font-family:var(--mono); font-size:.66rem; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--lime); margin-bottom:.4rem; display:inline-flex; align-items:center; gap:.45em; }
+.ide-label .dot{ width:6px; height:6px; border-radius:50%; background:var(--lime); box-shadow:0 0 8px var(--lime); }
+.py-hero{ background:#0d1b18; }
+.course-title{ font-family:var(--serif); font-weight:900; line-height:.95; letter-spacing:-.02em;
+  font-size:clamp(2.4rem,5.6vw,4.6rem); text-shadow:0 4px 30px rgba(200,242,90,.18); }
+.slide.active .reveal{ animation:rise .65s cubic-bezier(.2,.85,.25,1) backwards; }
+.slide.active .reveal:nth-child(1){ animation-delay:.05s; }
+.slide.active .reveal:nth-child(2){ animation-delay:.13s; }
+.slide.active .reveal:nth-child(3){ animation-delay:.22s; }
+.slide.active .reveal:nth-child(4){ animation-delay:.32s; }
+.slide.active .reveal:nth-child(5){ animation-delay:.42s; }
+@keyframes rise{ from{ opacity:0; transform:translateY(24px);} to{ opacity:1; transform:none;} }
+.sol-btn{ background:rgba(245,239,228,.08); color:#f5efe4; border:1px solid rgba(245,239,228,.2);
+  border-radius:99px; padding:.5em 1.1em; font-family:var(--mono); font-size:.7rem; letter-spacing:.12em;
+  text-transform:uppercase; cursor:pointer; transition:.2s; }
+.sol-btn:hover{ border-color:var(--lime); color:var(--lime); }
+.sol pre{ display:none; background:#21222c; border-radius:10px; padding:.9rem 1rem; font-family:var(--mono);
+  font-size:.8rem; line-height:1.6; color:#f8f8f2; white-space:pre-wrap; margin-top:.7rem; }
+.sol.open pre{ display:block; }
+
+/* ==========================================================================
+   ÍNDICE / MENÚ (estilo panel editorial de fundamentos)
+   ========================================================================== */
+.topbar{ position:fixed; top:0; left:0; right:0; z-index:55; display:flex; justify-content:space-between;
+  align-items:center; padding:.9rem 1.3rem; pointer-events:none; }
+.brand-badge{ font-family:var(--mono); font-size:.64rem; letter-spacing:.2em; text-transform:uppercase;
+  color:var(--ink); background:var(--lime); padding:.45em .9em; border-radius:100px;
+  box-shadow:0 8px 20px -8px rgba(0,0,0,.5); display:inline-block; pointer-events:auto; text-decoration:none; }
+.menu-btn{ pointer-events:auto; background:#fff; color:var(--ink); border:none; cursor:pointer;
+  font-family:var(--mono); font-size:.68rem; letter-spacing:.18em; text-transform:uppercase;
+  padding:.5em .95em; border-radius:100px; box-shadow:0 8px 20px -8px rgba(0,0,0,.5); transition:.2s; font-weight:700; }
+.menu-btn:hover{ background:var(--lime); transform:translateY(-2px); }
+.menu-overlay{ position:fixed; inset:0; z-index:90; background:rgba(13,27,24,.55); backdrop-filter:blur(6px);
+  opacity:0; visibility:hidden; transition:.3s; }
+.menu-overlay.open{ opacity:1; visibility:visible; }
+.menu-panel{ position:absolute; top:0; right:0; height:100%; width:min(440px,92vw); background:var(--paper);
+  color:var(--ink); box-shadow:-20px 0 60px -20px rgba(0,0,0,.5); padding:1.8rem; overflow:auto;
+  transform:translateX(40px); transition:transform .35s cubic-bezier(.2,.8,.2,1); }
+.menu-overlay.open .menu-panel{ transform:none; }
+.menu-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:1.2rem; }
+.menu-head .mk{ font-family:var(--mono); font-size:.7rem; letter-spacing:.26em; text-transform:uppercase; color:var(--moss); }
+.menu-close{ background:var(--ink); color:var(--paper); border:none; width:36px; height:36px; border-radius:50%;
+  cursor:pointer; font-size:1rem; transition:.2s; }
+.menu-close:hover{ background:var(--clay); transform:rotate(90deg); }
+.menu-group{ font-family:var(--mono); font-size:.64rem; letter-spacing:.22em; text-transform:uppercase;
+  color:var(--clay); margin:1.1rem 0 .5rem; padding-left:.4rem; }
+.menu-list{ list-style:none; padding:0; margin:0; }
+.menu-list li{ padding:.6rem .9rem; border-radius:12px; cursor:pointer; display:flex; align-items:baseline; gap:.8rem;
+  transition:.2s; border:1.5px solid transparent; margin-bottom:.15rem; }
+.menu-list li .mn{ font-family:var(--mono); font-size:.72rem; color:var(--clay); font-weight:700; flex-shrink:0; min-width:2.2ch; }
+.menu-list li:hover{ background:#fff; border-color:var(--moss); transform:translateX(-4px); }
+.menu-list li.current{ background:var(--moss); color:var(--paper); }
+.menu-list li.current .mn{ color:var(--lime); }
+.menu-list li .mt{ font-family:var(--serif); font-weight:600; font-size:.98rem; line-height:1.15; display:block; }
+.menu-list li .md{ font-size:.73rem; color:#6a786f; display:block; margin-top:.1rem; }
+.menu-list li.current .md{ color:rgba(245,239,228,.75); }
+
+/* ==========================================================================
+   RESPONSIVE
+   ========================================================================== */
+@media (max-width:1100px){
+  .tool-grid{ grid-template-columns:repeat(2,1fr); }
+  .def-grid{ grid-template-columns:repeat(2,1fr); }
+  .checks{ grid-template-columns:repeat(2,1fr); }
+  .inst-body2{ grid-template-columns:1fr; }
+  .ia-grid,.ds-grid,.algo-grid,.demo-grid,.tok-grid{ grid-template-columns:1fr; gap:18px; }
+  .rings{ width:300px; height:300px; } .r2{ inset:46px; } .r3{ inset:92px; } .r4{ inset:132px; }
+}
+@media (max-width:960px){
+  .cmp2-grid,.duo{ grid-template-columns:1fr; gap:14px; }
+  .tf-diag{ grid-template-columns:1fr; gap:12px; }
+  .tf-arrows{ transform:rotate(90deg); }
+  .tline{ grid-template-columns:1fr; gap:10px; }
+  .tline::before{ display:none; }
+  .tl{ padding-top:0; padding-left:30px; }
+  .tl .dot{ top:4px; }
+}
+@media (max-width:820px){
+  .slide{ padding:5.5rem 6vw 6rem; align-items:flex-start; }
+  .slide-scroll{ max-height:none; }
+  #prev,#next{ bottom:16px; padding:11px 16px; }
+  #prev .lbl,#next .lbl{ display:none; }
+  #navHint{ display:none; }
+  .progress-num{ top:auto; bottom:22px; left:50%; transform:translateX(-50%); }
+  .block-tag{ font-size:9px; padding:5px 12px; }
+  .tool-grid,.def-grid,.checks{ grid-template-columns:1fr; }
+  .mc-name h1{ font-size:clamp(44px,13.5vw,76px); }
+  .hero-author{ margin-top:26px; }
+  .hero-top{ flex-direction:column; gap:10px; }
+  .inst-steps li{ opacity:1; transform:none; animation:none; }
+}
+@media (prefers-reduced-motion:reduce){
+  *{ animation:none !important; transition:none !important; }
+}
+</style>
+</head>
+<body>
+
+<canvas id="net"></canvas>
+
+<div id="progress"></div>
+<div class="progress-num"><b id="curNum">1</b> / <span id="totNum">1</span></div>
+<div class="block-tag is-hidden" id="blockTag"></div>
+
+<div class="topbar">
+  <span class="brand-badge">Trabajo Científico · IA para la Productividad</span>
+  <div style="display:flex;gap:.5rem;align-items:center;pointer-events:auto">
+    <a class="brand-badge" href="https://wa.me/573184280112?text=Hola%2C%20quiero%20informaci%C3%B3n%20del%20curso%20de%20IA%20para%20la%20Productividad%20y%20Optimizaci%C3%B3n%20del%20Trabajo" target="_blank" rel="noopener" style="background:var(--paper)">← Curso</a>
+    <button class="menu-btn" id="menuBtn" aria-label="Índice de secciones">☰ Índice</button>
+  </div>
+</div>
+
+<div class="menu-overlay" id="menuOverlay">
+  <div class="menu-panel">
+    <div class="menu-head">
+      <span class="mk">Saltar a una sección</span>
+      <button class="menu-close" id="menuClose" aria-label="Cerrar">✕</button>
+    </div>
+    <div id="menuBody"></div>
+  </div>
+</div>
+
+<div id="stage">
+<!-- ================================================================
+     MÓDULO 1 — FUNDAMENTOS DE LA INTELIGENCIA ARTIFICIAL
+     ================================================================ -->
+
+<!-- 01 · PORTADA -->
+<section class="slide hero active" data-block="Presentación" data-title="Portada" data-sub="IA para la Productividad y Optimización del Trabajo">
+  <div class="slide-scroll">
+    <div class="hero-top">
+      <svg class="orbit" viewBox="0 0 64 64" fill="none">
+        <circle cx="32" cy="32" r="7" fill="#00f5d4"/>
+        <ellipse cx="32" cy="32" rx="28" ry="11" stroke="#00f5d4" stroke-opacity=".6" stroke-width="2"/>
+        <ellipse cx="32" cy="32" rx="28" ry="11" stroke="#4285f4" stroke-opacity=".6" stroke-width="2" transform="rotate(60 32 32)"/>
+        <ellipse cx="32" cy="32" rx="28" ry="11" stroke="#ffd166" stroke-opacity=".6" stroke-width="2" transform="rotate(120 32 32)"/>
+        <circle cx="60" cy="32" r="3" fill="#4285f4"/><circle cx="18" cy="53" r="3" fill="#ffd166"/><circle cx="14" cy="20" r="2.4" fill="#00f5d4"/>
+      </svg>
+    </div>
+    <div class="mc-name">
+      <h1>
+        <span class="ln1">Inteligencia Artificial</span>
+        <span class="ln2">para la <span class="grad">Productividad</span></span>
+        <span class="ln3">y la optimización del trabajo</span>
+      </h1>
+    </div>
+    <div class="hero-author">
+      <span class="ha-name">Oscar Iván Vargas Pineda</span>
+      <span class="ha-role">Docente</span>
+    </div>
+    <div class="hero-cta">
+      <button class="btn-primary" onclick="go(1)">Empezar →</button>
+    </div>
+  </div>
+</section>
+
+<!-- 02 · PERFIL DEL DOCENTE -->
+<section class="slide" data-block="Presentación" data-title="Quién dicta el curso" data-sub="Oscar Iván Vargas Pineda, PhD">
+  <div class="slide-scroll pf">
+    <div class="pf-grid">
+
+      <!-- columna izquierda: foto + formación -->
+      <aside class="pf-side">
+        <div class="pf-frame">
+          <img src="oscar-vargas.png" alt="Oscar Iván Vargas Pineda" loading="lazy">
+        </div>
+        <div class="pf-edu">
+          <div class="pf-edu-t">Formación académica</div>
+          <div class="pf-edu-row"><span class="n">01</span><span class="lv">Pregrado</span><span class="dg">Ingeniero Agroindustrial</span></div>
+          <div class="pf-edu-row"><span class="n">02</span><span class="lv">Especialista</span><span class="dg">Gestión del Agua</span></div>
+          <div class="pf-edu-row"><span class="n">03</span><span class="lv">Magíster</span><span class="dg">Gestión Ambiental Sostenible</span></div>
+          <div class="pf-edu-row"><span class="n">04</span><span class="lv">Magíster</span><span class="dg">Inteligencia Artificial Aplicada</span></div>
+          <div class="pf-edu-row phd"><span class="n">05</span><span class="lv">Doctor</span><span class="dg">Ciencias Agrarias</span></div>
+        </div>
+
+        <div class="pf-social">
+          <div class="pf-edu-t">Sígueme</div>
+          <div class="pf-soc-grid">
+            <a class="soc yt" href="https://www.youtube.com/@TCientifico" target="_blank" rel="noopener" title="YouTube · @TCientifico">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814ZM9.545 15.568V8.432L15.818 12l-6.273 3.568Z"/></svg>
+              <span>YouTube</span>
+            </a>
+            <a class="soc li" href="https://www.linkedin.com/in/oscar-ivan-vargas-pineda-2aa543240/" target="_blank" rel="noopener" title="LinkedIn">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.45 20.45h-3.55v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.13 1.45-2.13 2.94v5.67H9.36V9h3.41v1.56h.05c.47-.9 1.63-1.85 3.36-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29zM5.34 7.43A2.06 2.06 0 113.27 5.37a2.06 2.06 0 012.07 2.06zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.72v20.56C0 23.23.79 24 1.77 24h20.45C23.2 24 24 23.23 24 22.28V1.72C24 .77 23.2 0 22.22 0z"/></svg>
+              <span>LinkedIn</span>
+            </a>
+            <a class="soc ig" href="https://www.instagram.com/trabajocientifico/" target="_blank" rel="noopener" title="Instagram · @trabajocientifico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r=".9" fill="currentColor" stroke="none"/></svg>
+              <span>Instagram</span>
+            </a>
+            <a class="soc wa" href="https://wa.me/573184280112" target="_blank" rel="noopener" title="WhatsApp · +57 318 428 0112">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.263.489 1.694.625.712.227 1.36.195 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884a9.82 9.82 0 0 1 6.988 2.896 9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.885-9.885 9.885M20.52 3.449C18.24 1.245 15.24 0 12.045 0 5.463 0 .104 5.359.101 11.945c0 2.096.547 4.142 1.588 5.945L0 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.585 0 11.946-5.359 11.949-11.945a11.87 11.87 0 0 0-3.497-8.4"/></svg>
+              <span>WhatsApp</span>
+            </a>
+          </div>
+        </div>
+      </aside>
+
+      <!-- columna derecha: identidad + trayectoria -->
+      <div class="pf-main">
+        <span class="eyebrow">Científico de datos · Docente investigador</span>
+        <h2 class="pf-name">Oscar Iván <span class="hl">Vargas Pineda</span><span class="pf-phd">PhD</span></h2>
+        <p class="pf-bio">Más de diez años transformando datos en decisiones. Conecto la <b>academia, la consultoría internacional y la divulgación</b> para enseñar ciencia de datos a investigadores, docentes y profesionales que nunca han programado.</p>
+
+        <div class="pf-stats">
+          <div class="pf-stat"><div class="v">10+</div><div class="k">Años de experiencia profesional</div></div>
+          <div class="pf-stat"><div class="v">7</div><div class="k">Años como docente universitario</div></div>
+          <div class="pf-stat"><div class="v">5</div><div class="k">Años como consultor de datos</div></div>
+          <div class="pf-stat"><div class="v">9</div><div class="k">Publicaciones como primer autor</div></div>
+        </div>
+
+        <div class="pf-cols">
+          <div class="pf-box">
+            <div class="pf-box-t">Docencia universitaria</div>
+            <ul class="pf-list">
+              <li><b>Universidad de los Llanos</b><span>Ingeniería Agroindustrial</span></li>
+              <li><b>Universidad Santo Tomás</b><span>Ingeniería Industrial</span></li>
+              <li><b>Universidad Jorge Tadeo Lozano</b><span>Posgrado · Diseño y Creación con IA</span></li>
+              <li><b>Universidad Central</b><span>Pregrado y posgrado</span></li>
+            </ul>
+            <div class="pf-inv">Invitado: <b>Politécnica de Madrid</b> (España) · <b>Montpellier</b> (Francia) · <b>El Bosque</b> (Colombia)</div>
+          </div>
+
+          <div class="pf-box">
+            <div class="pf-box-t">Consultoría en datos</div>
+            <ul class="pf-list">
+              <li><b>Earth Innovation Institute</b><span>Científico de datos · IA aplicada a sostenibilidad <em class="pf-now">Actual</em></span></li>
+              <li><b>Banco Mundial</b><span>Análisis de datos</span></li>
+              <li><b>Banco Interamericano de Desarrollo</b><span>Análisis de datos</span></li>
+              <li><b>ECOPETROL</b> · <b>Fundación ALISOS</b><span>Datos para industria y modelamiento</span></li>
+            </ul>
+            <div class="pf-inv">Creador del <b>Diplomado en Ciencia de Datos y Machine Learning</b> y de 6 cursos de profundización.</div>
+          </div>
+        </div>
+
+        <div class="pf-skills">
+          <div class="pf-sk"><span class="c">Lenguajes</span><span class="s">Python</span><span class="s">R</span><span class="s">SQL</span></div>
+          <div class="pf-sk"><span class="c">Análisis</span><span class="s">Machine Learning</span><span class="s">Visualización</span><span class="s">Automatización</span></div>
+          <div class="pf-sk"><span class="c">IA · Asistentes</span><span class="s">Claude Code</span><span class="s">Codex</span><span class="s">Antigravity</span></div>
+          <div class="pf-sk"><span class="c">Software</span><span class="s">ArcGIS Pro</span><span class="s">VENSIM</span><span class="s">Power BI</span></div>
+        </div>
+
+        <div class="pf-links">
+          <a class="go" href="index/perfil.html" target="_blank" rel="noopener">Ver perfil completo →</a>
+          <a href="https://trabajocientifico.org/" target="_blank" rel="noopener">trabajocientifico.org</a>
+          <a href="mailto:oscarvargas@trabajocientifico.org">oscarvargas@trabajocientifico.org</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-block="Presentación" data-title="La ruta" data-sub="Los seis módulos del curso">
+  <div class="slide-scroll wrapA">
+    <div class="slide-head">
+      <span class="eyebrow">Cómo vamos a avanzar</span>
+      <h2>Seis módulos: de <span class="hl">entender la IA</span> a <span class="hl">automatizar tu trabajo</span></h2>
+      <p class="lead">Cada módulo se apoya en el anterior. Empezamos por comprender qué es realmente una IA, seguimos por aprender a comunicarnos con ella, y terminamos automatizando tareas reales de tu día a día.</p>
+    </div>
+    <div class="mod-grid">
+      <div class="mod-card">
+        <div class="mod-n">Módulo 1</div>
+        <h3>Fundamentos de la Inteligencia Artificial</h3>
+        <p>Qué es la IA, cómo "piensa" un modelo de lenguaje y en qué se diferencia una IA que responde de un agente que ejecuta.</p>
+      </div>
+      <div class="mod-card">
+        <div class="mod-n">Módulo 2</div>
+        <h3>Ingeniería de Prompts y Comunicación con IA</h3>
+        <p>Cómo pedirle a una IA exactamente lo que necesitas: rol, contexto, formato de salida e iteración.</p>
+      </div>
+      <div class="mod-card">
+        <div class="mod-n">Módulo 3</div>
+        <h3>IA para la Gestión Documental y Comunicación Escrita</h3>
+        <p>Redactar, resumir, revisar y estructurar documentos, correos e informes con apoyo de IA.</p>
+      </div>
+      <div class="mod-card">
+        <div class="mod-n">Módulo 4</div>
+        <h3>IA para el Análisis de Datos y Toma de Decisiones</h3>
+        <p>Fundamentos de programación en Python desde cero, aplicados a analizar datos y decidir con evidencia.</p>
+      </div>
+      <div class="mod-card">
+        <div class="mod-n">Módulo 5</div>
+        <h3>Automatización de Procesos con IA</h3>
+        <p>Instalar y usar agentes de IA en tu computador para que ejecuten tareas repetitivas por ti.</p>
+      </div>
+      <div class="mod-card">
+        <div class="mod-n">Módulo 6</div>
+        <h3>Ética, Limitaciones y Proyecto Integrado</h3>
+        <p>Qué no puede hacer una IA, qué riesgos asumes al usarla y cómo cerrar el curso con un proyecto propio.</p>
+      </div>
+    </div>
+    <p class="note-foot"><b>Regla de la casa:</b> nadie avanza solo. Si algo no funciona, lo resolvemos en vivo antes de pasar al siguiente módulo.</p>
+  </div>
+</section>
+
+<section class="slide" data-block="Módulo 1 · Fundamentos de IA" data-title="El punto de partida" data-sub="No vienes a memorizar código">
+  <div class="slide-scroll wrapA">
+    <div class="slide-head">
+      <span class="eyebrow">El punto de partida</span>
+      <h2>No vienes a memorizar código.<br>Vienes a <span class="hl">resolver problemas</span></h2>
+      <p class="lead">Durante años, programar fue una barrera reservada a quienes estudiaron ingeniería de sistemas. <b>Eso cambió.</b></p>
+    </div>
+    <div class="duo">
+      <div class="pane past">
+        <span class="tag">Antes</span>
+        <h3>Aprender el idioma completo antes de decir la primera frase</h3>
+        <p>Meses de sintaxis, errores crípticos y frustración antes de ver un resultado útil. La barrera de entrada expulsaba a la mayoría en las primeras semanas.</p>
+      </div>
+      <div class="pane now">
+        <span class="tag">Ahora</span>
+        <h3>Conversar con un copiloto que traduce tus ideas a código</h3>
+        <p>Describes el objetivo en español, la IA propone el código, tú lo entiendes, lo verificas y lo ajustas. Tu trabajo es <b style="color:var(--text)">pensar el problema</b>.</p>
+      </div>
+    </div>
+    <p class="note-foot"><b>Pero ojo:</b> para dirigir bien a una IA hay que entender lo que entrega. Por eso este curso enseña los dos lados.</p>
+  </div>
+</section>
+
+<section class="slide" data-block="Módulo 1 · Fundamentos de IA" data-title="¿Qué es la IA?" data-sub="Las capas: IA, ML, deep learning, generativa">
+  <div class="slide-scroll ia">
+    <div class="slide-head">
+      <span class="eyebrow">Punto de partida</span>
+      <h2>¿Qué es la <span class="hl">Inteligencia Artificial</span>?</h2>
+    </div>
+    <div class="ia-grid">
+      <div class="rings">
+        <div class="ring-l r1">Inteligencia Artificial</div>
+        <div class="ring-l r2">Machine Learning</div>
+        <div class="ring-l r3">Deep Learning</div>
+        <div class="ring-l r4">IA<br>Generativa</div>
+        <div class="spin"><div class="rdot" style="transform:translate(150px,0)"></div></div>
+        <div class="spin" style="animation-duration:24s"><div class="rdot" style="transform:translate(-120px,0); background:#4285f4; box-shadow:0 0 12px #4285f4"></div></div>
+      </div>
+      <div class="ia-flow">
+        <div class="ia-def">La IA es <b>software que aprende de datos</b> para realizar tareas que antes requerían inteligencia humana: reconocer, predecir, decidir y generar.</div>
+        <div class="ia-steps">
+          <div class="ia-node">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg></div>
+            <h4>1 · Datos</h4><p>Miles de ejemplos</p>
+          </div>
+          <div class="ia-arrow">▶</div>
+          <div class="ia-node">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg></div>
+            <h4>2 · Aprende</h4><p>Detecta patrones</p>
+          </div>
+          <div class="ia-arrow">▶</div>
+          <div class="ia-node">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h7l-1 8 11-13h-7l1-7z"/></svg></div>
+            <h4>3 · Actúa</h4><p>Predice y genera</p>
+          </div>
+        </div>
+        <div class="ia-ex">
+          <span>🖼 Reconoce imágenes</span><span>🌐 Traduce</span><span>🎯 Recomienda</span><span>✍ Genera texto y código</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-block="Módulo 1 · Fundamentos de IA" data-title="Cuatro palabras clave" data-sub="IA · ML · IA generativa · LLM">
+  <div class="slide-scroll wrapA">
+    <div class="slide-head">
+      <span class="eyebrow">Definiciones sin tecnicismos</span>
+      <h2>Cuatro palabras que escucharás <span class="hl">todo el curso</span></h2>
+      <p class="lead">Toca cada tarjeta para profundizar.</p>
+    </div>
+    <div class="def-grid" id="defCards">
+      <div class="def-card">
+        <div class="ic2"><i class="fa-solid fa-brain"></i></div>
+        <span class="tag2">Concepto base</span>
+        <h3>Inteligencia Artificial</h3>
+        <p>Sistemas que realizan tareas que asociamos con la inteligencia humana: reconocer, predecir, decidir.</p>
+        <div class="more">Es el campo grande que contiene todo lo demás. No es magia ni un cerebro: es software que encuentra patrones en datos.</div>
+        <span class="hintc">Toca para ver más</span>
+      </div>
+      <div class="def-card">
+        <div class="ic2"><i class="fa-solid fa-chart-line"></i></div>
+        <span class="tag2">Subcampo</span>
+        <h3>Machine Learning</h3>
+        <p>La máquina <b>aprende de ejemplos</b> en lugar de seguir reglas escritas a mano una por una.</p>
+        <div class="more">Le muestras miles de casos y el modelo deduce la regla. Es el corazón de la ciencia de datos predictiva.</div>
+        <span class="hintc">Toca para ver más</span>
+      </div>
+      <div class="def-card">
+        <div class="ic2"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+        <span class="tag2">Lo que usaremos</span>
+        <h3>IA Generativa</h3>
+        <p>Modelos que <b>crean</b> contenido nuevo: texto, imágenes y, clave para nosotros, <b>código</b>.</p>
+        <div class="more">A diferencia de un buscador, no copia: genera una respuesta original prediciendo qué viene a continuación, pieza por pieza.</div>
+        <span class="hintc">Toca para ver más</span>
+      </div>
+      <div class="def-card">
+        <div class="ic2"><i class="fa-solid fa-comment-dots"></i></div>
+        <span class="tag2">El motor</span>
+        <h3>LLM</h3>
+        <p>Large Language Model: entrenado con enormes cantidades de texto para entender y generar lenguaje.</p>
+        <div class="more">ChatGPT, Claude o Gemini son LLM. Les hablas en español y responden con explicaciones o con Python listo para ejecutar.</div>
+        <span class="hintc">Toca para ver más</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-block="Módulo 1 · Fundamentos de IA" data-title="Breve historia" data-sub="De 1956 a los agentes de hoy">
+  <div class="slide-scroll wrapA">
+    <div class="slide-head">
+      <span class="eyebrow">Cómo llegamos hasta aquí</span>
+      <h2>Una <span class="hl">breve historia</span></h2>
+      <p class="lead">Pasa el cursor por cada hito.</p>
+    </div>
+    <div class="tline">
+      <div class="tl"><div class="dot"></div><div class="yr">1956</div><div class="ev">Nace el término "Inteligencia Artificial" en la conferencia de <b>Dartmouth</b>.</div></div>
+      <div class="tl"><div class="dot"></div><div class="yr">1991</div><div class="ev">Se crea <b>Python</b>, pensado para ser legible y fácil de aprender.</div></div>
+      <div class="tl"><div class="dot"></div><div class="yr">2012</div><div class="ev">El <b>deep learning</b> revoluciona el reconocimiento de imágenes. Despega el ML moderno.</div></div>
+      <div class="tl"><div class="dot"></div><div class="yr">2017</div><div class="ev">Nace la arquitectura <b>Transformer</b>, la base de los LLM actuales.</div></div>
+      <div class="tl now"><div class="dot"></div><div class="yr">Hoy</div><div class="ev">Cualquier persona puede programar conversando con una IA — y con <b>agentes</b> que además ejecutan. <b>Aquí empiezas tú.</b></div></div>
+    </div>
+    <p class="note-foot">Lo que antes tomaba una carrera universitaria, hoy es accesible en una tarde — si sabes <b>qué preguntar</b>.</p>
+  </div>
+</section>
+
+<section class="slide" data-block="Módulo 1 · Fundamentos de IA" data-title="Cómo piensa un LLM" data-sub="Predice el siguiente token">
+  <div class="slide-scroll wrapA">
+    <div class="slide-head">
+      <span class="eyebrow">Bajo el capó</span>
+      <h2>No escribe frases. Predice <span class="hl">la siguiente palabra</span></h2>
+      <p class="lead">Un LLM genera texto pieza por pieza (cada pieza se llama <b>token</b>). En cada paso calcula qué tan probable es cada palabra y elige. Pulsa para verlo.</p>
+    </div>
+    <div class="tok-grid">
+      <div class="tok-screen">
+        <div class="tok-prompt">
+          <span class="who">👤 Pregunta del usuario</span>
+          ¿Cuál es la capital de Colombia?
+        </div>
+        <div class="tok-text" id="tokText"><span class="ghost">Pulsa "Generar siguiente token" para empezar…</span></div>
+        <div class="cands" id="tokCands"></div>
+      </div>
+      <div class="tok-side">
+        <div class="tok-note">
+          <h4>¿Qué estás viendo?</h4>
+          En cada paso el modelo propone varios candidatos con su probabilidad. Normalmente elige el más probable
+          (resaltado) y lo añade al texto. Luego repite, ahora teniendo en cuenta lo que ya escribió.
+        </div>
+        <div class="tok-note warn">
+          <h4>La idea clave</h4>
+          No hay un guion escrito de antemano: la coherencia <b>emerge</b> de elegir, una y otra vez, la pieza más
+          probable según el contexto. Así también genera código Python — y por eso a veces se equivoca:
+          <b>siempre hay que verificar</b>.
+        </div>
+        <div class="tok-controls">
+          <button class="mini-btn on" id="tokStep">▶ Generar siguiente token</button>
+          <button class="mini-btn" id="tokAuto">⏩ Auto</button>
+          <button class="mini-btn" id="tokReset">↺ Reiniciar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-block="Módulo 1 · Fundamentos de IA" data-title="IA vs. Agente de IA" data-sub="El concepto clave del curso">
+  <div class="slide-scroll cmp2">
+    <div class="slide-head">
+      <span class="eyebrow">El concepto clave</span>
+      <h2>IA <span class="hl">vs.</span> Agente de IA</h2>
+    </div>
+    <div class="cmp2-grid">
+      <div class="cmp2-panel ai">
+        <span class="tag">Inteligencia Artificial</span>
+        <h3>Responde</h3>
+        <div class="role">Reactiva · tú ejecutas todo</div>
+        <div class="flow">
+          <div class="flow-node"><div class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 12 0v1"/></svg></div><span>Preguntas</span></div>
+          <span class="flow-arr">▶</span>
+          <div class="flow-node"><div class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.9.8A3 3 0 0 0 5 11a3 3 0 0 0 2 5 3 3 0 0 0 5 .8 3 3 0 0 0 5-.8 3 3 0 0 0 2-5 3 3 0 0 0-1.1-5.2A3 3 0 0 0 12 5Z"/></svg></div><span>Modelo</span></div>
+          <span class="flow-arr">▶</span>
+          <div class="flow-node"><div class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><span>Respuesta</span></div>
+          <span class="flow-arr">▶</span>
+          <div class="flow-node manual"><div class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-4 0M14 10V4a2 2 0 0 0-4 0v2M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2a8 8 0 0 1-7-4l-2.8-4.6a2 2 0 0 1 3.4-2.1L7 15"/></svg></div><span>Tú ejecutas</span></div>
+        </div>
+      </div>
+      <div class="cmp2-panel agent">
+        <span class="tag">Agente de IA</span>
+        <h3>Ejecuta</h3>
+        <div class="role">Autónomo · cierra el ciclo solo</div>
+        <div class="loop">
+          <div class="ring"></div><div class="orbit-dot"></div>
+          <div class="center">🎯<br>Objetivo</div>
+          <div class="node n-top"><b>Percibe</b></div>
+          <div class="node n-right"><b>Planifica</b></div>
+          <div class="node n-bot"><b>Actúa</b></div>
+          <div class="node n-left"><b>Verifica</b></div>
+        </div>
+        <div class="tools"><span>⌘ Terminal</span><span>🗂 Archivos</span><span>🌐 Navegador</span></div>
+      </div>
+    </div>
+    <p class="cmp2-note"><b>En corto:</b> la IA te <b>responde</b>; el agente <b>hace el trabajo</b> mientras tú diriges. En el módulo 5 instalaremos dos agentes en tu computador.</p>
+  </div>
+</section>
+
+<section class="slide" data-block="Módulo 1 · Fundamentos de IA" data-title="Cómo transforma tu trabajo" data-sub="Le das · el agente · te devuelve">
+  <div class="slide-scroll tf">
+    <div class="slide-head">
+      <span class="eyebrow">Por qué importan</span>
+      <h2>Cómo <span class="hl">transforman</span> tu trabajo de datos</h2>
+    </div>
+    <div class="tf-diag">
+      <div class="tf-col in">
+        <div class="col-label">Le das</div>
+        <div class="tf-item"><div class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg></div><span>Datos crudos</span></div>
+        <div class="tf-item"><div class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1h6c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2Z"/></svg></div><span>Una idea</span></div>
+        <div class="tf-item"><div class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9"/><path d="M3 3v6h6"/></svg></div><span>Tarea repetitiva</span></div>
+      </div>
+      <div class="tf-arrows"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+      <div class="tf-hub">
+        <div class="halo"></div>
+        <div class="hub-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4M8 4h8M9 14h.01M15 14h.01"/></svg></div>
+        <h3>AGENTE</h3><p>Planifica · actúa · verifica</p>
+      </div>
+      <div class="tf-arrows"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+      <div class="tf-col out">
+        <div class="col-label">Te devuelve</div>
+        <div class="tf-item"><div class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div><span>Código limpio</span></div>
+        <div class="tf-item"><div class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="10" width="3" height="8"/><rect x="12" y="6" width="3" height="12"/><rect x="17" y="13" width="3" height="5"/></svg></div><span>Gráficos y tableros</span></div>
+        <div class="tf-item"><div class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div><span>Archivos Excel</span></div>
+        <div class="tf-item"><div class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><span>Tiempo de vuelta</span></div>
+      </div>
+    </div>
+    <p class="tf-foot"><b>Tú diriges, el agente ejecuta</b> — y aprendes en el proceso.</p>
+  </div>
+</section>
+
+<section class="slide" data-block="Módulo 2 · Ingeniería de Prompts" data-title="Demo: prompt → resultado" data-sub="De la instrucción al entregable">
+  <div class="slide-scroll wrapA">
+    <div class="slide-head">
+      <span class="eyebrow">El momento mágico · demo en vivo</span>
+      <h2>Prompt en español <span class="hl">→</span> Python real</h2>
+      <p class="lead">Elige una tarea, mira el código que "genera" la IA y <b>ejecútalo aquí mismo</b>. Esto es exactamente lo que harás con tu agente en el módulo 5.</p>
+    </div>
+    <div class="demo-grid">
+      <div>
+        <div class="chips" id="chipRow">
+          <span class="chipb" data-i="0">🧮 Calcular el promedio de ventas</span>
+          <span class="chipb" data-i="1">🏆 Encontrar el mejor mes</span>
+          <span class="chipb" data-i="2">🧹 Quitar datos repetidos</span>
+        </div>
+        <div class="prompt-box" id="promptBox"><span class="who2">👤 Tu prompt</span>Selecciona una tarea arriba para construir tu prompt…</div>
+        <div class="tok-controls" style="margin-top:14px">
+          <button class="mini-btn on" id="askBtn" disabled>▶ Pedir el código a la IA</button>
+        </div>
+        <div class="tok-note" style="margin-top:14px">
+          <h4>Fíjate en algo</h4>
+          El código llega <b>comentado y explicado</b>. Tu trabajo no es escribirlo de memoria: es leerlo,
+          entenderlo y comprobar que hace lo correcto.
+        </div>
+      </div>
+      <div class="code-pane">
+        <div class="code-bar"><span class="d d1"></span><span class="d d2"></span><span class="d d3"></span><span class="ttl" id="demoTtl">respuesta_ia.py</span></div>
+        <div class="code-body" id="demoCode" style="min-height:210px;white-space:pre-wrap;color:#8b94b3">Esperando tu prompt…</div>
+        <div class="code-actions">
+          <button class="mini-btn" id="demoRun" disabled>▶ Ejecutar el código</button>
+        </div>
+        <div class="term-out2" id="demoOut"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-block="Módulo 2 · Ingeniería de Prompts" data-title="Prompts · por completar" data-sub="Material pendiente">
+  <div class="slide-scroll wrapA">
+    <div class="slide-head">
+      <span class="eyebrow">Módulo 2 · en construcción</span>
+      <h2>Ingeniería de <span class="hl">prompts</span></h2>
+      <p class="lead">Cómo pedirle a una IA exactamente lo que necesitas: estructura, contexto, rol, formato de salida y iteración.</p>
+    </div>
+    <div class="duo">
+      <div class="pane now">
+        <span class="tag">Contenido previsto</span>
+        <h3>Qué veremos en este módulo</h3>
+        <ul>
+          <li>Anatomía de un prompt efectivo</li>
+          <li>Rol, contexto, tarea y formato</li>
+          <li>Iterar y refinar una respuesta</li>
+          <li>Plantillas reutilizables para tu trabajo</li>
+        </ul>
+      </div>
+      <div class="pane">
+        <span class="tag">Pendiente</span>
+        <h3>Material en preparación</h3>
+        <ul>
+          <li>Diapositivas de concepto</li>
+          <li>Demostración en vivo</li>
+          <li>Ejercicio práctico guiado</li>
+        </ul>
+      </div>
+    </div>
+    <p class="note-foot"><b>TODO:</b> añadir aquí las diapositivas del módulo 2.</p>
+  </div>
+</section>
+
+<section class="slide" data-block="Módulo 3 · Gestión Documental" data-title="Gestión documental · por completar" data-sub="Material pendiente">
+  <div class="slide-scroll wrapA">
+    <div class="slide-head">
+      <span class="eyebrow">Módulo 3 · en construcción</span>
+      <h2>IA para <span class="hl">documentos</span> y comunicación escrita</h2>
+      <p class="lead">Redactar, resumir, revisar y estructurar documentos con apoyo de IA sin perder tu criterio ni tu voz.</p>
+    </div>
+    <div class="duo">
+      <div class="pane now">
+        <span class="tag">Contenido previsto</span>
+        <h3>Qué veremos en este módulo</h3>
+        <ul>
+          <li>Redacción y reescritura asistida</li>
+          <li>Resumen de documentos largos</li>
+          <li>Correos, informes y actas</li>
+          <li>Revisión de estilo y coherencia</li>
+        </ul>
+      </div>
+      <div class="pane">
+        <span class="tag">Pendiente</span>
+        <h3>Material en preparación</h3>
+        <ul>
+          <li>Diapositivas de concepto</li>
+          <li>Demostración en vivo</li>
+          <li>Ejercicio práctico guiado</li>
+        </ul>
+      </div>
+    </div>
+    <p class="note-foot"><b>TODO:</b> añadir aquí las diapositivas del módulo 3.</p>
+  </div>
+</section>
+
+<section class="slide" data-block="Módulo 4 · Análisis de Datos" data-title="¿Qué es ciencia de datos?" data-sub="La intersección de tres mundos">
+  <div class="slide-scroll wrapA">
+    <div class="slide-head">
+      <span class="eyebrow">El destino</span>
+      <h2>¿Qué es hacer <span class="hl">ciencia de datos</span>?</h2>
+      <p class="lead">Es la intersección de <b>tres mundos</b>. Ahí, justo en el centro, vive el científico de datos.</p>
+    </div>
+    <div class="ds-grid">
+      <div class="venn">
+        <div class="vc cs">Ciencias de la<br>Computación</div>
+        <div class="vc math">Matemáticas y<br>Estadística</div>
+        <div class="vc biz">Conocimiento<br>del Negocio</div>
+        <div class="vc-center">Ciencia<br>de Datos</div>
+      </div>
+      <div class="uses">
+        <div class="use"><span class="mark">1</span><div><h4>Entender qué está pasando</h4><p>Resumir datos, ver patrones y encontrar señales que no son obvias a simple vista.</p></div></div>
+        <div class="use"><span class="mark">2</span><div><h4>Predecir lo que puede pasar</h4><p>Estimar ventas, demanda, riesgo, resultados o comportamientos futuros.</p></div></div>
+        <div class="use"><span class="mark">3</span><div><h4>Tomar mejores decisiones</h4><p>Comparar opciones con evidencia en lugar de decidir solo por intuición.</p></div></div>
+        <div class="use"><span class="mark">4</span><div><h4>Automatizar y detectar alertas</h4><p>Clasificar casos, priorizar tareas y descubrir anomalías antes de que crezcan.</p></div></div>
+      </div>
+    </div>
+    <p class="note-foot">Python es la herramienta · la IA es el copiloto · <b>tú eres el científico de datos.</b></p>
+  </div>
+</section>
+
+<section class="slide" data-block="Módulo 4 · Análisis de Datos" data-title="Un algoritmo es una receta" data-sub="Datos · cálculo · decisión">
+  <div class="slide-scroll wrapA">
+    <div class="slide-head">
+      <span class="eyebrow">La palabra clave</span>
+      <h2>Un <span class="hl">algoritmo</span> es una receta</h2>
+      <p class="lead">Una secuencia de pasos ordenados para llegar a un resultado. Lo usas todos los días sin darte cuenta.</p>
+    </div>
+    <div class="algo-grid">
+      <div class="algo-txt">
+        <ul class="algo-list">
+          <li><b>Receta de cocina:</b> pasos para un plato.</li>
+          <li><b>Indicaciones GPS:</b> pasos para llegar a un destino.</li>
+          <li><b>Algoritmo en Python:</b> pasos para transformar datos en una respuesta.</li>
+        </ul>
+        <p>Programar es, en esencia, <b>escribir recetas que la computadora ejecuta</b>. Este esquema —datos, cálculo, decisión— es el esqueleto de casi todo lo que haremos en el curso.</p>
+        <div class="tok-note"><h4>Pruébalo</h4>Revela los tres pasos con el botón y luego ejecuta el algoritmo para ver cómo decide.</div>
+      </div>
+      <div class="code-pane">
+        <div class="code-bar"><span class="d d1"></span><span class="d d2"></span><span class="d d3"></span><span class="ttl">algoritmo.py</span></div>
+        <div class="code-body" id="algoCode">
+          <div class="cline"><span class="cm-c"># Algoritmo: ¿el promedio del grupo aprobó?</span></div>
+          <div class="cline off" data-step="1"><span class="cm-c"># Paso 1 · los datos</span></div>
+          <div class="cline off" data-step="1"><span class="cm-k">notas</span> = [<span class="cm-n">3.5</span>, <span class="cm-n">4.2</span>, <span class="cm-n">2.8</span>, <span class="cm-n">3.9</span>]</div>
+          <div class="cline off" data-step="2"> </div>
+          <div class="cline off" data-step="2"><span class="cm-c"># Paso 2 · sumar y dividir</span></div>
+          <div class="cline off" data-step="2"><span class="cm-k">promedio</span> = <span class="cm-f">sum</span>(notas) / <span class="cm-f">len</span>(notas)</div>
+          <div class="cline off" data-step="3"> </div>
+          <div class="cline off" data-step="3"><span class="cm-c"># Paso 3 · decidir</span></div>
+          <div class="cline off" data-step="3"><span class="cm-k">if</span> promedio &gt;= <span class="cm-n">3.0</span>:</div>
+          <div class="cline off" data-step="3">    <span class="cm-f">print</span>(<span class="cm-s">"Aprobó ✅"</span>)</div>
+          <div class="cline off" data-step="3"><span class="cm-k">else</span>:</div>
+          <div class="cline off" data-step="3">    <span class="cm-f">print</span>(<span class="cm-s">"No aprobó ❌"</span>)</div>
+        </div>
+        <div class="code-actions">
+          <button class="mini-btn on" id="algoStep">▶ Mostrar paso 1</button>
+          <button class="mini-btn" id="algoRun" disabled>▶ Ejecutar</button>
+          <button class="mini-btn" id="algoReset">↺ Reiniciar</button>
+        </div>
+        <div class="term-out2" id="algoOut"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-block="Módulo 4 · Análisis de Datos" data-title="¿Por qué Python?" data-sub="Sintaxis intuitiva · rey de los datos">
+  <div class="slide-scroll wrapA">
+    <div class="slide-head">
+      <span class="eyebrow">La herramienta</span>
+      <h2>¿Por qué <span class="hl">Python</span>?</h2>
+      <p class="lead">De todos los lenguajes que existen, este curso usa Python por tres razones muy concretas.</p>
+    </div>
+    <div class="algo-grid">
+      <div class="algo-txt">
+        <ul class="algo-list">
+          <li><b>Sintaxis intuitiva:</b> se lee casi como inglés. Menos símbolos raros, menos frustración.</li>
+          <li><b>El rey de los datos:</b> pandas, matplotlib y scikit-learn — el ecosistema estándar de la ciencia de datos vive en Python.</li>
+          <li><b>Es el que la IA escribe mejor:</b> hay tanto código Python público que los modelos lo dominan como ningún otro lenguaje.</li>
+        </ul>
+        <p>Con <b>4 líneas</b> puedes abrir un Excel de 100.000 filas y ver sus datos. Todavía no hay que entenderlo: es solo un anticipo de a dónde vamos.</p>
+      </div>
+      <div class="code-pane">
+        <div class="code-bar"><span class="d d1"></span><span class="d d2"></span><span class="d d3"></span><span class="ttl">anticipo · más adelante en el curso</span></div>
+        <div class="code-body">
+          <div class="cline"><span class="cm-k">import</span> pandas <span class="cm-k">as</span> pd</div>
+          <div class="cline"> </div>
+          <div class="cline"><span class="cm-c"># 1. Cargamos el archivo de Excel</span></div>
+          <div class="cline">df = pd.<span class="cm-f">read_excel</span>(<span class="cm-s">'ventas_anuales.xlsx'</span>)</div>
+          <div class="cline"> </div>
+          <div class="cline"><span class="cm-c"># 2. Mostramos los primeros datos</span></div>
+          <div class="cline"><span class="cm-f">print</span>(df.<span class="cm-f">head</span>())</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide s-py" data-block="Módulo 4 · Análisis de Datos" data-title="Fundamentos de Python" data-sub="Programar desde cero para analizar datos">
+  <div class="py-stage flex flex-col justify-center">
+    <div class="reveal mb-8">
+      <span class="kicker mb-3">Módulo 4 · Python desde cero</span>
+      <h1 class="course-title mt-4 text-white">Fundamentos de <span style="color:var(--lime)">Python</span></h1>
+      <p class="text-lg md:text-xl text-slate-300 mt-5 max-w-3xl leading-relaxed">
+        Con las herramientas listas, empezamos a escribir. Cada tema trae un ejemplo que puedes
+        <span class="em">ejecutar aquí mismo</span>, y los más importantes terminan con un reto "manos al teclado".
+      </p>
+    </div>
+    <div class="reveal grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+      <div class="toc-card p-4 rounded-xl border border-slate-700 bg-slate-800/40"><span class="code-font text-xs" style="color:var(--lime)">01</span><p class="font-bold mt-1">Comentarios</p><p class="text-xs text-slate-400">notas para humanos</p></div>
+      <div class="toc-card p-4 rounded-xl border border-slate-700 bg-slate-800/40"><span class="code-font text-xs" style="color:var(--lime)">02</span><p class="font-bold mt-1">print()</p><p class="text-xs text-slate-400">el megáfono</p></div>
+      <div class="toc-card p-4 rounded-xl border border-slate-700 bg-slate-800/40"><span class="code-font text-xs" style="color:var(--lime)">03</span><p class="font-bold mt-1">Variables</p><p class="text-xs text-slate-400">cajas de almacenamiento</p></div>
+      <div class="toc-card p-4 rounded-xl border border-slate-700 bg-slate-800/40"><span class="code-font text-xs" style="color:var(--lime)">04</span><p class="font-bold mt-1">Tipos de datos</p><p class="text-xs text-slate-400">int · float · str · bool</p></div>
+      <div class="toc-card p-4 rounded-xl border border-slate-700 bg-slate-800/40"><span class="code-font text-xs" style="color:var(--lime)">05</span><p class="font-bold mt-1">Listas</p><p class="text-xs text-slate-400">mochilas de datos</p></div>
+      <div class="toc-card p-4 rounded-xl border border-slate-700 bg-slate-800/40"><span class="code-font text-xs" style="color:var(--lime)">06</span><p class="font-bold mt-1">Tuplas</p><p class="text-xs text-slate-400">la caja sellada</p></div>
+      <div class="toc-card p-4 rounded-xl border border-slate-700 bg-slate-800/40"><span class="code-font text-xs" style="color:var(--lime)">07</span><p class="font-bold mt-1">Diccionarios</p><p class="text-xs text-slate-400">clave y valor</p></div>
+      <div class="toc-card p-4 rounded-xl border border-slate-700 bg-slate-800/40"><span class="code-font text-xs" style="color:var(--lime)">08</span><p class="font-bold mt-1">Conjuntos</p><p class="text-xs text-slate-400">sin repetidos</p></div>
+      <div class="toc-card p-4 rounded-xl border border-slate-700 bg-slate-800/40"><span class="code-font text-xs" style="color:var(--lime)">09</span><p class="font-bold mt-1">Condicionales</p><p class="text-xs text-slate-400">if · elif · else</p></div>
+      <div class="toc-card p-4 rounded-xl border border-slate-700 bg-slate-800/40"><span class="code-font text-xs" style="color:var(--lime)">10</span><p class="font-bold mt-1">Bucles</p><p class="text-xs text-slate-400">el trabajador incansable</p></div>
+      <div class="toc-card p-4 rounded-xl border border-slate-700 bg-slate-800/40"><span class="code-font text-xs" style="color:var(--lime)">11</span><p class="font-bold mt-1">Funciones</p><p class="text-xs text-slate-400">recetas guardadas</p></div>
+      <div class="toc-card p-4 rounded-xl border border-slate-700 bg-slate-800/40" style="border-color:rgba(242,177,52,.4)"><span class="code-font text-xs" style="color:var(--amber)">6×</span><p class="font-bold mt-1">Retos</p><p class="text-xs text-slate-400">manos al teclado</p></div>
+    </div>
+    <div class="reveal mt-6 p-4 rounded-lg text-sm text-slate-300" style="background:rgba(31,93,76,.25);border-left:4px solid var(--lime)">
+      <i class="fa-solid fa-lightbulb mr-2" style="color:var(--amber)"></i>
+      <strong>Consejo:</strong> no copies el código sin leerlo. Cambia un valor, ejecútalo otra vez y observa qué pasa. Ahí es donde se aprende.
+    </div>
+  </div>
+</section>
+
+<section class="slide s-py" data-block="Módulo 4 · Análisis de Datos" data-title="01 · Comentarios" data-sub="Notas para humanos">
+  <div class="py-stage flex flex-col">
+    <div class="reveal mb-6 border-b border-slate-700 pb-4">
+      <span class="kicker mb-2">Capítulo 1</span>
+      <h2 class="serif-h2 text-3xl md:text-5xl mt-3 text-white">
+        <i class="fa-solid fa-hashtag mr-2" style="color:var(--lime)"></i>Comentarios: <span class="em">notas para humanos</span>
+      </h2>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 flex-1 items-center">
+      <div class="space-y-4">
+        <p class="text-lg text-slate-300">
+          Todo lo que va después de un <code>#</code> lo <strong>ignora</strong> el computador. Sirve para explicarle a otra persona —o a ti dentro de un mes— qué hace cada parte del código.
+        </p>
+        <ul class="text-lg text-slate-400 space-y-2 list-disc list-inside marker:text-lime-300">
+          <li>Explican <strong>el porqué</strong>, no lo que ya es obvio.</li>
+          <li>Sirven para <strong>desactivar</strong> temporalmente una línea.</li>
+          <li>El código que te dé un agente llega comentado: úsalo para entender.</li>
+        </ul>
+        <div class="p-3 bg-slate-800 border-l-4 border-yellow-500 rounded text-sm text-slate-300">
+          <i class="fa-solid fa-lightbulb text-yellow-300 mr-2"></i> Un código sin comentarios funciona igual… hasta que alguien tiene que modificarlo.
+        </div>
+      </div>
+      <div class="ide-window h-fit">
+        <div class="ide-header">
+          <div class="ide-dots"><div class="ide-dot red"></div><div class="ide-dot yellow"></div><div class="ide-dot green"></div></div>
+          <button class="run-btn" onclick="runCode('code-comments','out-comments')"><i class="fa-solid fa-play"></i> Ejecutar Código</button>
+        </div>
+        <textarea id="code-comments" class="python-editor"># Esto es un comentario. El computador no lo lee.
+# Los usamos para explicar qué hace el código.
+
+print("¡Esto sí se ejecuta en la pantalla!")
+
+# print("Esto está comentado, así que no hará nada")</textarea>
+        <div id="out-comments" class="console-output code-font text-sm"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide s-py" data-block="Módulo 4 · Análisis de Datos" data-title="02 · print()" data-sub="El megáfono del programa">
+  <div class="py-stage flex flex-col">
+    <div class="reveal mb-6 border-b border-slate-700 pb-4">
+      <span class="kicker mb-2">Capítulo 2</span>
+      <h2 class="serif-h2 text-3xl md:text-5xl mt-3 text-white">
+        <i class="fa-solid fa-bullhorn mr-2" style="color:var(--lime)"></i>La función <code>print()</code>: <span class="em">el megáfono</span>
+      </h2>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 flex-1 items-center">
+      <div class="space-y-4">
+        <p class="text-xl text-slate-300">
+          Una computadora procesa millones de datos en silencio. Si queremos que nos muestre un resultado, necesitamos ordenarle que "hable".
+        </p>
+        <p class="text-lg text-slate-400">
+          Para eso usamos <code>print()</code>. Todo lo que pongas dentro de los paréntesis (y entre comillas si es texto) aparecerá en la consola.
+        </p>
+        <div class="p-4 bg-yellow-900/30 border border-yellow-600 rounded-lg text-yellow-300">
+          <i class="fa-solid fa-hand-pointer mr-2"></i> <strong>¡Inténtalo!</strong> Edita el texto entre comillas, pon tu propio nombre y presiona Ejecutar.
+        </div>
+      </div>
+      <div class="ide-window h-fit">
+        <div class="ide-header">
+          <div class="ide-dots"><div class="ide-dot red"></div><div class="ide-dot yellow"></div><div class="ide-dot green"></div></div>
+          <button class="run-btn" onclick="runCode('code-print','out-print')"><i class="fa-solid fa-play"></i> Ejecutar Código</button>
+        </div>
+        <textarea id="code-print" class="python-editor"># Imprimiendo un texto (String)
+print("¡Hola, futuros programadores!")
+
+# Imprimiendo un número
+print(2025)
+
+# Imprimiendo una operación matemática
+print("El resultado de 5 + 5 es:")
+print(5 + 5)</textarea>
+        <div id="out-print" class="console-output code-font text-sm"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide s-py" data-block="Módulo 4 · Análisis de Datos" data-title="03 · Variables" data-sub="Cajas de almacenamiento">
+  <div class="py-stage flex flex-col">
+    <div class="reveal mb-6 border-b border-slate-700 pb-4">
+      <span class="kicker mb-2">Capítulo 3</span>
+      <h2 class="serif-h2 text-3xl md:text-5xl mt-3 text-white">
+        <i class="fa-solid fa-box-open mr-2" style="color:var(--lime)"></i>Variables: <span class="em">cajas de almacenamiento</span>
+      </h2>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 flex-1 items-center">
+      <div class="space-y-4">
+        <p class="text-lg text-slate-300">
+          Una variable es una caja con una etiqueta donde guardas un dato para usarlo después. El signo <code>=</code> significa "guarda esto aquí".
+        </p>
+        <div class="p-4 rounded-lg border border-slate-600 bg-slate-800/60">
+          <p class="font-bold mb-2" style="color:var(--lime)">Reglas OBLIGATORIAS para nombrar cajas (variables):</p>
+          <ul class="text-sm text-slate-300 space-y-1 list-disc list-inside marker:text-lime-300">
+            <li>Sin espacios: usa guion bajo → <code>nombre_estudiante</code></li>
+            <li>No pueden empezar por un número</li>
+            <li>Sin tildes ni <code>ñ</code></li>
+            <li>Distingue mayúsculas: <code>Edad</code> y <code>edad</code> son cajas distintas</li>
+            <li>Usa nombres que se entiendan: <code>total_ventas</code>, no <code>x</code></li>
+          </ul>
+        </div>
+      </div>
+      <div class="ide-window h-fit">
+        <div class="ide-header">
+          <div class="ide-dots"><div class="ide-dot red"></div><div class="ide-dot yellow"></div><div class="ide-dot green"></div></div>
+          <button class="run-btn" onclick="runCode('code-vars','out-vars')"><i class="fa-solid fa-play"></i> Ejecutar Código</button>
+        </div>
+        <textarea id="code-vars" class="python-editor"># Creamos variables (etiquetamos cajas)
+nombre_estudiante = "Ana"
+edad = 25
+estatura = 1.68
+
+# Usamos el megáfono para ver qué hay en la caja
+print("El nombre guardado es:")
+print(nombre_estudiante)
+
+print("La edad es:")
+print(edad)</textarea>
+        <div id="out-vars" class="console-output code-font text-sm"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide s-py" data-block="Módulo 4 · Análisis de Datos" data-title="04 · Tipos de datos" data-sub="int · float · str · bool">
+  <div class="py-stage flex flex-col">
+    <div class="reveal mb-6 border-b border-slate-700 pb-4">
+      <span class="kicker mb-2">Capítulo 4</span>
+      <h2 class="serif-h2 text-3xl md:text-5xl mt-3 text-white">
+        <i class="fa-solid fa-shapes mr-2" style="color:var(--lime)"></i>Tipos de datos: <span class="em">el material de cada caja</span>
+      </h2>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 flex-1 items-center">
+      <div class="space-y-4">
+        <p class="text-lg text-slate-300">
+          Así como en la vida real hay cosas de <strong>madera, vidrio o plástico</strong>, en Python cada dato está hecho de un "material" distinto. Elegir bien el tipo evita errores.
+        </p>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-slate-800 p-3 rounded-lg border border-slate-600">
+            <p class="font-bold text-blue-300"><code>int</code> · Entero</p>
+            <p class="text-sm text-slate-400">Números sin decimales: <code>25</code>, <code>-4</code></p>
+          </div>
+          <div class="bg-slate-800 p-3 rounded-lg border border-slate-600">
+            <p class="font-bold text-sky-300"><code>float</code> · Decimal</p>
+            <p class="text-sm text-slate-400">Con punto: <code>1.75</code>, <code>3.14</code></p>
+          </div>
+          <div class="bg-slate-800 p-3 rounded-lg border border-slate-600">
+            <p class="font-bold text-green-300"><code>str</code> · Texto</p>
+            <p class="text-sm text-slate-400">Entre comillas: <code>"Ana"</code></p>
+          </div>
+          <div class="bg-slate-800 p-3 rounded-lg border border-slate-600">
+            <p class="font-bold text-amber-300"><code>bool</code> · Lógico</p>
+            <p class="text-sm text-slate-400">Solo <code>True</code> o <code>False</code></p>
+          </div>
+        </div>
+        <div class="p-3 bg-blue-900/30 border-l-4 border-blue-500 rounded text-sm text-slate-300">
+          <i class="fa-solid fa-lightbulb text-yellow-300 mr-2"></i> La función <code>type()</code> te dice de qué material está hecho un dato. Con <code>int()</code>, <code>str()</code> o <code>float()</code> puedes convertir de un tipo a otro.
+        </div>
+      </div>
+      <div class="ide-window h-fit">
+        <div class="ide-header">
+          <div class="ide-dots"><div class="ide-dot red"></div><div class="ide-dot yellow"></div><div class="ide-dot green"></div></div>
+          <button class="run-btn" onclick="runCode('code-tipos','out-tipos')"><i class="fa-solid fa-play"></i> Ejecutar Código</button>
+        </div>
+        <textarea id="code-tipos" class="python-editor"># type() revela el tipo de cada dato
+edad = 25             # int  (entero)
+estatura = 1.75       # float (decimal)
+nombre = "Ana"        # str  (texto)
+es_estudiante = True  # bool (verdadero/falso)
+
+print(type(edad))
+print(type(estatura))
+print(type(nombre))
+print(type(es_estudiante))
+
+# Convertir de un tipo a otro
+edad_texto = str(edad)     # el número 25 se vuelve texto "25"
+numero = int("10") + 5     # el texto "10" se vuelve número
+print("Edad como texto:", edad_texto)
+print("Suma convertida:", numero)</textarea>
+        <div id="out-tipos" class="console-output code-font text-sm"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide s-py" data-block="Módulo 4 · Análisis de Datos" data-title="Reto · Variables y tipos" data-sub="¡Manos al teclado!">
+  <div class="py-stage flex flex-col justify-center items-center text-center">
+    <div class="reveal mb-8 text-center">
+      <span class="kicker mb-3" style="color:var(--amber)">¡Manos al teclado!</span>
+      <h2 class="serif-h2 text-4xl md:text-5xl mt-3" style="color:var(--amber)">
+        <i class="fa-solid fa-laptop-code mr-2"></i>Reto: <span class="em" style="color:var(--lime)">Variables y Tipos</span>
+      </h2>
+    </div>
+    <div class="reto-card p-6 md:p-10 rounded-2xl max-w-3xl text-left w-full">
+      <p class="text-lg text-slate-300 mb-4">Utilizando el editor de abajo, escribe un programa que cumpla lo siguiente:</p>
+      <ol class="text-lg text-slate-200 space-y-3 list-decimal list-inside marker:text-yellow-400 marker:font-bold mb-6">
+        <li>Crea una variable llamada <strong>mi_nombre</strong> y asígnale tu nombre en texto (entre comillas).</li>
+        <li>Crea una variable llamada <strong>mi_edad</strong> y asígnale tu edad (en números, sin comillas).</li>
+        <li>Usa la función <code>print()</code> dos veces para imprimir ambas variables.</li>
+      </ol>
+      <div class="ide-window">
+        <div class="ide-header">
+          <div class="ide-dots"><div class="ide-dot red"></div><div class="ide-dot yellow"></div><div class="ide-dot green"></div></div>
+          <button class="run-btn" onclick="runCode('code-reto-vars','out-reto-vars')"><i class="fa-solid fa-play"></i> Ejecutar Mi Reto</button>
+        </div>
+        <textarea id="code-reto-vars" class="python-editor"># ¡Borra esto y escribe tu código aquí!
+
+
+</textarea>
+        <div id="out-reto-vars" class="console-output code-font text-sm"></div>
+      </div>
+      <div class="sol mt-4">
+        <button class="sol-btn" onclick="this.parentElement.classList.toggle('open')">Ver una solución posible</button>
+        <pre>mi_nombre = "Ana"
+mi_edad = 25
+
+print(mi_nombre)
+print(mi_edad)</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide s-py" data-block="Módulo 4 · Análisis de Datos" data-title="05 · Listas" data-sub="Mochilas de datos">
+  <div class="py-stage flex flex-col">
+    <div class="reveal mb-6 border-b border-slate-700 pb-4">
+      <span class="kicker mb-2">Capítulo 5</span>
+      <h2 class="serif-h2 text-3xl md:text-5xl mt-3 text-white">
+        <i class="fa-solid fa-list-ul mr-2" style="color:var(--lime)"></i>Listas: <span class="em">mochilas de datos</span>
+      </h2>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 flex-1 items-center">
+      <div class="space-y-4">
+        <p class="text-lg text-slate-300">
+          Ya sabemos que una variable es una caja para UN solo objeto. Pero, ¿y si necesitamos llevar muchos, como en una mochila escolar? Para eso usamos las <strong>Listas</strong> (con corchetes <code>[]</code>).
+        </p>
+        <p class="text-lg text-slate-400">
+          <strong>Atención:</strong> las computadoras empiezan a contar desde cero. El primer elemento de tu mochila está en la posición <code>[0]</code>, no en la 1.
+        </p>
+        <div class="p-3 bg-slate-800 border-l-4 border-blue-500 rounded text-sm text-slate-300">
+          <i class="fa-solid fa-hand-pointer text-yellow-300 mr-2"></i> Las listas son <strong>mutables</strong>: puedes añadir, quitar o cambiar sus elementos cuando quieras.
+        </div>
+      </div>
+      <div class="ide-window h-fit">
+        <div class="ide-header">
+          <div class="ide-dots"><div class="ide-dot red"></div><div class="ide-dot yellow"></div><div class="ide-dot green"></div></div>
+          <button class="run-btn" onclick="runCode('code-list','out-list')"><i class="fa-solid fa-play"></i> Ejecutar Código</button>
+        </div>
+        <textarea id="code-list" class="python-editor"># Creamos una lista (mochila)
+mochila = ["Cuaderno", "Lápiz", "Borrador"]
+
+print("Mi mochila tiene:")
+print(mochila)
+
+print("El primer objeto (índice 0) es:")
+print(mochila[0])
+
+# .append() sirve para meter un nuevo objeto al final
+mochila.append("Regla")
+print("Mochila actualizada:")
+print(mochila)</textarea>
+        <div id="out-list" class="console-output code-font text-sm"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide s-py" data-block="Módulo 4 · Análisis de Datos" data-title="Reto · Listas" data-sub="¡Manos al teclado!">
+  <div class="py-stage flex flex-col justify-center items-center text-center">
+    <div class="reveal mb-8 text-center">
+      <span class="kicker mb-3" style="color:var(--amber)">¡Manos al teclado!</span>
+      <h2 class="serif-h2 text-4xl md:text-5xl mt-3" style="color:var(--amber)">
+        <i class="fa-solid fa-list-ul mr-2"></i>Reto: <span class="em" style="color:var(--lime)">Listas</span>
+      </h2>
+    </div>
+    <div class="reto-card p-6 md:p-10 rounded-2xl max-w-3xl text-left w-full">
+      <ol class="text-lg text-slate-200 space-y-3 list-decimal list-inside marker:text-yellow-400 marker:font-bold mb-5">
+        <li>Crea una lista llamada <strong>mis_colores</strong> con tres colores en texto.</li>
+        <li>Usa <code>.append()</code> para añadir un cuarto color.</li>
+        <li>Imprime la lista completa y luego solo el primer color.</li>
+      </ol>
+      <div class="ide-window">
+        <div class="ide-header">
+          <div class="ide-dots"><div class="ide-dot red"></div><div class="ide-dot yellow"></div><div class="ide-dot green"></div></div>
+          <button class="run-btn" onclick="runCode('code-reto-list','out-reto-list')"><i class="fa-solid fa-play"></i> Ejecutar Mi Reto</button>
+        </div>
+        <textarea id="code-reto-list" class="python-editor"># Escribe aquí tu código de listas
+
+
+</textarea>
+        <div id="out-reto-list" class="console-output code-font text-sm"></div>
+      </div>
+      <div class="sol mt-4">
+        <button class="sol-btn" onclick="this.parentElement.classList.toggle('open')">Ver una solución posible</button>
+        <pre>mis_colores = ["Rojo", "Azul", "Verde"]
+mis_colores.append("Amarillo")
+
+print(mis_colores)
+print(mis_colores[0])</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide s-py" data-block="Módulo 4 · Análisis de Datos" data-title="06 · Tuplas" data-sub="Datos que no cambian">
+  <div class="py-stage flex flex-col">
+    <div class="reveal mb-6 border-b border-slate-700 pb-4">
+      <span class="kicker mb-2">Capítulo 6</span>
+      <h2 class="serif-h2 text-3xl md:text-5xl mt-3 text-white">
+        <i class="fa-solid fa-lock mr-2" style="color:var(--lime)"></i>Tuplas: <span class="em">la caja sellada</span>
+      </h2>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 flex-1 items-center">
+      <div class="space-y-4">
+        <p class="text-lg text-slate-300">
+          Una <strong>tupla</strong> es como una lista, pero <strong>sellada con pegamento</strong>: una vez la creas, sus elementos <strong>no se pueden cambiar</strong>. Se escriben con paréntesis <code>()</code>.
+        </p>
+        <p class="text-lg text-slate-400">
+          Se usan para datos que <strong>no deben modificarse</strong>: las coordenadas de un mapa, los colores de una bandera, tu fecha de nacimiento. Se leen igual que las listas, con índices <code>[0]</code>, <code>[1]</code>…
+        </p>
+        <div class="p-3 bg-slate-800 border-l-4 border-red-500 rounded text-sm text-slate-300">
+          <i class="fa-solid fa-triangle-exclamation text-red-400 mr-2"></i> Si intentas cambiar una tupla (<code>coordenada[0] = 5</code>), Python dará un error. ¡Están protegidas!
+        </div>
+      </div>
+      <div class="ide-window h-fit">
+        <div class="ide-header">
+          <div class="ide-dots"><div class="ide-dot red"></div><div class="ide-dot yellow"></div><div class="ide-dot green"></div></div>
+          <button class="run-btn" onclick="runCode('code-tupla','out-tupla')"><i class="fa-solid fa-play"></i> Ejecutar Código</button>
+        </div>
+        <textarea id="code-tupla" class="python-editor"># Una tupla se crea con paréntesis ()
+coordenada = (4, 10)   # latitud, longitud
+
+print("La tupla completa es:")
+print(coordenada)
+
+print("El primer valor (índice 0) es:")
+print(coordenada[0])
+
+# Sirven para datos fijos que no deben cambiar
+colores_bandera = ("Amarillo", "Azul", "Rojo")
+print("Colores de la bandera:")
+print(colores_bandera)
+
+# Si quitas el # de abajo, verás el error:
+# coordenada[0] = 99   # ¡Las tuplas no se pueden cambiar!</textarea>
+        <div id="out-tupla" class="console-output code-font text-sm"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide s-py" data-block="Módulo 4 · Análisis de Datos" data-title="07 · Diccionarios" data-sub="Etiqueta y contenido">
+  <div class="py-stage flex flex-col">
+    <div class="reveal mb-6 border-b border-slate-700 pb-4">
+      <span class="kicker mb-2">Capítulo 7</span>
+      <h2 class="serif-h2 text-3xl md:text-5xl mt-3 text-white">
+        <i class="fa-solid fa-book mr-2" style="color:var(--lime)"></i>Diccionarios: <span class="em">etiqueta y contenido</span>
+      </h2>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 flex-1 items-center">
+      <div class="space-y-4">
+        <p class="text-lg text-slate-300">
+          Guardan pares <strong>clave: valor</strong> con llaves <code>{}</code>. En vez de buscar por posición, buscas por nombre: <code>persona["edad"]</code>.
+        </p>
+        <p class="text-lg text-slate-400">
+          Es la estructura más parecida a una <strong>fila de Excel</strong>: cada columna tiene un nombre y un valor. Por eso son clave en ciencia de datos.
+        </p>
+        <div class="p-3 bg-slate-800 border-l-4 border-blue-500 rounded text-sm text-slate-300">
+          <i class="fa-solid fa-hand-pointer text-yellow-300 mr-2"></i> Para añadir o cambiar un dato basta con asignarlo: <code>persona["ciudad"] = "Bogotá"</code>.
+        </div>
+      </div>
+      <div class="ide-window h-fit">
+        <div class="ide-header">
+          <div class="ide-dots"><div class="ide-dot red"></div><div class="ide-dot yellow"></div><div class="ide-dot green"></div></div>
+          <button class="run-btn" onclick="runCode('code-dic','out-dic')"><i class="fa-solid fa-play"></i> Ejecutar Código</button>
+        </div>
+        <textarea id="code-dic" class="python-editor"># Un diccionario guarda pares clave: valor
+persona = {
+    "nombre": "Ana",
+    "edad": 25,
+    "ciudad": "Bogotá"
+}
+
+# Accedemos al valor usando su clave (no un número)
+print("Nombre:")
+print(persona["nombre"])
+
+print("Edad:")
+print(persona["edad"])
+
+# Podemos añadir o cambiar datos por su clave
+persona["profesion"] = "Científica de datos"
+print("Diccionario actualizado:")
+print(persona)</textarea>
+        <div id="out-dic" class="console-output code-font text-sm"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide s-py" data-block="Módulo 4 · Análisis de Datos" data-title="Reto · Diccionarios" data-sub="¡Manos al teclado!">
+  <div class="py-stage flex flex-col justify-center items-center text-center">
+    <div class="reveal mb-8 text-center">
+      <span class="kicker mb-3" style="color:var(--amber)">¡Manos al teclado!</span>
+      <h2 class="serif-h2 text-4xl md:text-5xl mt-3" style="color:var(--amber)">
+        <i class="fa-solid fa-book mr-2"></i>Reto: <span class="em" style="color:var(--lime)">Diccionarios</span>
+      </h2>
+    </div>
+    <div class="reto-card p-6 md:p-10 rounded-2xl max-w-3xl text-left w-full">
+      <ol class="text-lg text-slate-200 space-y-3 list-decimal list-inside marker:text-yellow-400 marker:font-bold mb-5">
+        <li>Crea un diccionario <strong>mi_perfil</strong> con las claves <code>"nombre"</code>, <code>"ciudad"</code> y <code>"edad"</code>.</li>
+        <li>Imprime solo tu ciudad usando la clave.</li>
+        <li>Añade la clave <code>"curso"</code> con el valor <code>"Ciencia de Datos"</code> e imprime todo.</li>
+      </ol>
+      <div class="ide-window">
+        <div class="ide-header">
+          <div class="ide-dots"><div class="ide-dot red"></div><div class="ide-dot yellow"></div><div class="ide-dot green"></div></div>
+          <button class="run-btn" onclick="runCode('code-reto-dic','out-reto-dic')"><i class="fa-solid fa-play"></i> Ejecutar Mi Reto</button>
+        </div>
+        <textarea id="code-reto-dic" class="python-editor"># Crea aquí tu diccionario
+
+
+</textarea>
+        <div id="out-reto-dic" class="console-output code-font text-sm"></div>
+      </div>
+      <div class="sol mt-4">
+        <button class="sol-btn" onclick="this.parentElement.classList.toggle('open')">Ver una solución posible</button>
+        <pre>mi_perfil = {
+    "nombre": "Ana",
+    "ciudad": "Bogotá",
+    "edad": 25
+}
+
+print(mi_perfil["ciudad"])
+
+mi_perfil["curso"] = "Ciencia de Datos"
+print(mi_perfil)</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide s-py" data-block="Módulo 4 · Análisis de Datos" data-title="08 · Conjuntos" data-sub="Elementos únicos">
+  <div class="py-stage flex flex-col">
+    <div class="reveal mb-6 border-b border-slate-700 pb-4">
+      <span class="kicker mb-2">Capítulo 8</span>
+      <h2 class="serif-h2 text-3xl md:text-5xl mt-3 text-white">
+        <i class="fa-solid fa-layer-group mr-2" style="color:var(--lime)"></i>Conjuntos: <span class="em">la bolsa sin repetidos</span>
+      </h2>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 flex-1 items-center">
+      <div class="space-y-4">
+        <p class="text-lg text-slate-300">
+          Un <strong>conjunto</strong> (<code>set</code>) guarda elementos <strong>únicos</strong>: si metes algo dos veces, solo queda una copia. También se escribe con llaves <code>{}</code>, pero sin pares clave:valor.
+        </p>
+        <p class="text-lg text-slate-400">
+          No mantienen un orden fijo: sirven para saber <strong>qué hay</strong>, no en qué posición está.
+        </p>
+        <div class="p-3 bg-slate-800 border-l-4 rounded text-sm text-slate-300" style="border-color:var(--lime)">
+          <i class="fa-solid fa-wand-magic-sparkles mr-2" style="color:var(--lime)"></i> Truco muy usado en datos: convertir una lista a <code>set()</code> para <strong>quitar duplicados</strong> en una sola línea.
+        </div>
+      </div>
+      <div class="ide-window h-fit">
+        <div class="ide-header">
+          <div class="ide-dots"><div class="ide-dot red"></div><div class="ide-dot yellow"></div><div class="ide-dot green"></div></div>
+          <button class="run-btn" onclick="runCode('code-conj','out-conj')"><i class="fa-solid fa-play"></i> Ejecutar Código</button>
+        </div>
+        <textarea id="code-conj" class="python-editor"># Un conjunto se crea con llaves {}
+frutas = {"manzana", "pera", "manzana", "uva"}
+
+# Aunque escribimos "manzana" dos veces, solo queda una
+print("Frutas únicas:")
+print(frutas)
+
+# Truco: quitar duplicados de una lista
+numeros = [1, 2, 2, 3, 3, 3, 4]
+sin_repetidos = set(numeros)
+print("Lista original:")
+print(numeros)
+print("Sin repetidos:")
+print(sin_repetidos)</textarea>
+        <div id="out-conj" class="console-output code-font text-sm"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide s-py" data-block="Módulo 4 · Análisis de Datos" data-title="09 · Condicionales" data-sub="if · elif · else">
+  <div class="py-stage flex flex-col">
+    <div class="reveal mb-6 border-b border-slate-700 pb-4">
+      <span class="kicker mb-2">Capítulo 9</span>
+      <h2 class="serif-h2 text-3xl md:text-5xl mt-3 text-white">
+        <i class="fa-solid fa-code-branch mr-2" style="color:var(--lime)"></i>Condicionales: <span class="em">encrucijadas y decisiones</span>
+      </h2>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 flex-1 items-center">
+      <div class="space-y-4">
+        <p class="text-lg text-slate-300">
+          Con <code>if</code> el programa decide: <strong>si</strong> se cumple una condición, haz esto; <strong>si no</strong>, haz aquello. Aquí es donde tu código empieza a "pensar".
+        </p>
+        <div class="p-4 rounded-lg border border-slate-600 bg-slate-800/60">
+          <p class="font-bold mb-2" style="color:var(--lime)">Los operadores que usarás:</p>
+          <div class="grid grid-cols-2 gap-2 text-sm text-slate-300">
+            <p><code>==</code> igual que</p><p><code>!=</code> distinto de</p>
+            <p><code>&gt;</code> mayor · <code>&lt;</code> menor</p><p><code>&gt;=</code> · <code>&lt;=</code></p>
+            <p><code>and</code> ambas</p><p><code>or</code> alguna</p>
+          </div>
+        </div>
+        <div class="p-3 bg-slate-800 border-l-4 border-red-500 rounded text-sm text-slate-300">
+          <i class="fa-solid fa-triangle-exclamation text-red-400 mr-2"></i> <strong>La sangría importa.</strong> Los 4 espacios no son decoración: le dicen a Python qué está dentro del <code>if</code>.
+        </div>
+      </div>
+      <div class="ide-window h-fit">
+        <div class="ide-header">
+          <div class="ide-dots"><div class="ide-dot red"></div><div class="ide-dot yellow"></div><div class="ide-dot green"></div></div>
+          <button class="run-btn" onclick="runCode('code-cond','out-cond')"><i class="fa-solid fa-play"></i> Ejecutar Código</button>
+        </div>
+        <textarea id="code-cond" class="python-editor"># Cambia este número para ver cómo decide el programa
+edad_usuario = 15
+
+print("Verificando permisos de acceso...")
+
+if edad_usuario >= 18:
+    # Se cumple SI la primera condición es verdadera
+    print("Eres mayor de edad. Puedes entrar al concierto.")
+elif edad_usuario >= 13:
+    # "Si no, PERO...": se revisa solo si la de arriba fue falsa
+    print("Eres adolescente. Puedes entrar con un adulto.")
+else:
+    # En cualquier otro caso
+    print("Eres muy pequeño. Acceso denegado.")
+
+# Combinar condiciones con and / or
+tiene_boleto = True
+if edad_usuario >= 13 and tiene_boleto:
+    print("¡Y además tienes boleto: disfruta el show!")</textarea>
+        <div id="out-cond" class="console-output code-font text-sm"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide s-py" data-block="Módulo 4 · Análisis de Datos" data-title="Reto · Condicionales" data-sub="¡Manos al teclado!">
+  <div class="py-stage flex flex-col justify-center items-center text-center">
+    <div class="reveal mb-8 text-center">
+      <span class="kicker mb-3" style="color:var(--amber)">¡Manos al teclado!</span>
+      <h2 class="serif-h2 text-4xl md:text-5xl mt-3" style="color:var(--amber)">
+        <i class="fa-solid fa-code-branch mr-2"></i>Reto: <span class="em" style="color:var(--lime)">Condicionales</span>
+      </h2>
+    </div>
+    <div class="reto-card p-6 md:p-10 rounded-2xl max-w-3xl text-left w-full">
+      <ol class="text-lg text-slate-200 space-y-3 list-decimal list-inside marker:text-yellow-400 marker:font-bold mb-5">
+        <li>Crea una variable <strong>nota</strong> con un número entre 0 y 5.</li>
+        <li>Si la nota es mayor o igual a 3, imprime <code>"Aprobó"</code>. Si no, <code>"Debe repetir"</code>.</li>
+        <li>Extra: agrega un <code>elif</code> que imprima <code>"¡Excelente!"</code> cuando la nota sea 4.5 o más.</li>
+      </ol>
+      <div class="ide-window">
+        <div class="ide-header">
+          <div class="ide-dots"><div class="ide-dot red"></div><div class="ide-dot yellow"></div><div class="ide-dot green"></div></div>
+          <button class="run-btn" onclick="runCode('code-reto-cond','out-reto-cond')"><i class="fa-solid fa-play"></i> Ejecutar Mi Reto</button>
+        </div>
+        <textarea id="code-reto-cond" class="python-editor"># Escribe tu condicional aquí (if / elif / else).
+# ¡Recuerda la sangría de 4 espacios dentro de cada rama!
+
+
+</textarea>
+        <div id="out-reto-cond" class="console-output code-font text-sm"></div>
+      </div>
+      <div class="sol mt-4">
+        <button class="sol-btn" onclick="this.parentElement.classList.toggle('open')">Ver una solución posible</button>
+        <pre>nota = 4.6
+
+if nota >= 4.5:
+    print("¡Excelente!")
+elif nota >= 3:
+    print("Aprobó")
+else:
+    print("Debe repetir")</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide s-py" data-block="Módulo 4 · Análisis de Datos" data-title="10 · Bucles" data-sub="El trabajador incansable">
+  <div class="py-stage flex flex-col">
+    <div class="reveal mb-6 border-b border-slate-700 pb-4">
+      <span class="kicker mb-2">Capítulo 10</span>
+      <h2 class="serif-h2 text-3xl md:text-5xl mt-3 text-white">
+        <i class="fa-solid fa-rotate mr-2" style="color:var(--lime)"></i>Bucles: <span class="em">el trabajador incansable</span>
+      </h2>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 flex-1 items-center">
+      <div class="space-y-4">
+        <p class="text-lg text-slate-300">
+          Un <code>for</code> repite las mismas instrucciones para cada elemento de una lista o de un rango de números. Es lo que convierte "hazlo una vez" en "hazlo 10.000 veces".
+        </p>
+        <ul class="text-lg text-slate-400 space-y-2 list-disc list-inside marker:text-lime-300">
+          <li><code>range(1, 6)</code> genera los números del 1 al <strong>5</strong> (el último no entra).</li>
+          <li>También puedes recorrer una lista: <code>for fruta in frutas:</code></li>
+          <li>Todo lo que va indentado dentro del <code>for</code> se repite.</li>
+        </ul>
+        <div class="p-3 bg-slate-800 border-l-4 rounded text-sm text-slate-300" style="border-color:var(--lime)">
+          <i class="fa-solid fa-bolt mr-2" style="color:var(--lime)"></i> Aquí está el verdadero superpoder de programar: procesar miles de filas de datos con tres líneas de código.
+        </div>
+      </div>
+      <div class="ide-window h-fit">
+        <div class="ide-header">
+          <div class="ide-dots"><div class="ide-dot red"></div><div class="ide-dot yellow"></div><div class="ide-dot green"></div></div>
+          <button class="run-btn" onclick="runCode('code-loop','out-loop')"><i class="fa-solid fa-play"></i> Ejecutar Código</button>
+        </div>
+        <textarea id="code-loop" class="python-editor">print("Iniciando la secuencia de repetición...")
+
+# range(1, 6) cuenta del 1 al 5.
+for numero in range(1, 6):
+    print("Dando la vuelta número:")
+    print(numero)
+
+print("¡Secuencia terminada!")
+
+# También podemos recorrer una lista
+frutas = ["manzana", "pera", "uva"]
+for fruta in frutas:
+    print("Me gusta la " + fruta)</textarea>
+        <div id="out-loop" class="console-output code-font text-sm"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide s-py" data-block="Módulo 4 · Análisis de Datos" data-title="Reto · Bucles" data-sub="¡Manos al teclado!">
+  <div class="py-stage flex flex-col justify-center items-center text-center">
+    <div class="reveal mb-8 text-center">
+      <span class="kicker mb-3" style="color:var(--amber)">¡Manos al teclado!</span>
+      <h2 class="serif-h2 text-4xl md:text-5xl mt-3" style="color:var(--amber)">
+        <i class="fa-solid fa-rotate mr-2"></i>Reto: <span class="em" style="color:var(--lime)">Bucles</span>
+      </h2>
+    </div>
+    <div class="reto-card p-6 md:p-10 rounded-2xl max-w-3xl text-left w-full">
+      <ol class="text-lg text-slate-200 space-y-3 list-decimal list-inside marker:text-yellow-400 marker:font-bold mb-5">
+        <li>Crea una lista <strong>ciudades</strong> con tres ciudades.</li>
+        <li>Recórrela con un <code>for</code> e imprime cada una.</li>
+        <li>Extra: usa <code>range(1, 11)</code> para imprimir la tabla del 5.</li>
+      </ol>
+      <div class="ide-window">
+        <div class="ide-header">
+          <div class="ide-dots"><div class="ide-dot red"></div><div class="ide-dot yellow"></div><div class="ide-dot green"></div></div>
+          <button class="run-btn" onclick="runCode('code-reto-loop','out-reto-loop')"><i class="fa-solid fa-play"></i> Ejecutar Mi Reto</button>
+        </div>
+        <textarea id="code-reto-loop" class="python-editor"># Escribe tu bucle aquí
+
+
+</textarea>
+        <div id="out-reto-loop" class="console-output code-font text-sm"></div>
+      </div>
+      <div class="sol mt-4">
+        <button class="sol-btn" onclick="this.parentElement.classList.toggle('open')">Ver una solución posible</button>
+        <pre>ciudades = ["Bogotá", "Medellín", "Cali"]
+
+for ciudad in ciudades:
+    print(ciudad)
+
+for i in range(1, 11):
+    print(5 * i)</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide s-py" data-block="Módulo 4 · Análisis de Datos" data-title="11 · Funciones" data-sub="Recetas guardadas">
+  <div class="py-stage flex flex-col">
+    <div class="reveal mb-6 border-b border-slate-700 pb-4">
+      <span class="kicker mb-2">Capítulo 11</span>
+      <h2 class="serif-h2 text-3xl md:text-5xl mt-3 text-white">
+        <i class="fa-solid fa-utensils mr-2" style="color:var(--lime)"></i>Funciones: <span class="em">recetas de cocina</span>
+      </h2>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 flex-1 items-center">
+      <div class="space-y-4">
+        <p class="text-lg text-slate-300">
+          Con <code>def</code> guardas una receta con nombre. No se ejecuta al definirla: se ejecuta cuando la <strong>llamas</strong>, y puedes llamarla las veces que quieras.
+        </p>
+        <ul class="text-lg text-slate-400 space-y-2 list-disc list-inside marker:text-lime-300">
+          <li><strong>Parámetros:</strong> los ingredientes que recibe → <code>(base, altura)</code></li>
+          <li><strong><code>return</code>:</strong> el plato que devuelve para usarlo después</li>
+          <li><strong>Ventaja:</strong> escribes la lógica una vez y la reutilizas en todo el proyecto</li>
+        </ul>
+        <div class="p-3 bg-slate-800 border-l-4 rounded text-sm text-slate-300" style="border-color:var(--lime)">
+          <i class="fa-solid fa-robot mr-2" style="color:var(--lime)"></i> Cuando le pidas a un agente "hazme una función que…", esto es lo que te va a devolver. Ahora ya sabrás leerlo.
+        </div>
+      </div>
+      <div class="ide-window h-fit">
+        <div class="ide-header">
+          <div class="ide-dots"><div class="ide-dot red"></div><div class="ide-dot yellow"></div><div class="ide-dot green"></div></div>
+          <button class="run-btn" onclick="runCode('code-func','out-func')"><i class="fa-solid fa-play"></i> Ejecutar Código</button>
+        </div>
+        <textarea id="code-func" class="python-editor"># 1. Definimos la receta (todavía no se ejecuta)
+def calcular_area_rectangulo(base, altura):
+    area = base * altura
+    return area
+
+# 2. La usamos con ingredientes reales
+resultado = calcular_area_rectangulo(5, 10)
+
+print("El área del rectángulo es:")
+print(resultado)
+
+# 3. La reutilizamos cuantas veces queramos
+print(calcular_area_rectangulo(3, 7))
+print(calcular_area_rectangulo(12, 2))</textarea>
+        <div id="out-func" class="console-output code-font text-sm"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide s-py" data-block="Módulo 4 · Análisis de Datos" data-title="Reto · Funciones" data-sub="El reto final del bloque">
+  <div class="py-stage flex flex-col justify-center items-center text-center">
+    <div class="reveal mb-8 text-center">
+      <span class="kicker mb-3" style="color:var(--amber)">¡Manos al teclado!</span>
+      <h2 class="serif-h2 text-4xl md:text-5xl mt-3" style="color:var(--amber)">
+        <i class="fa-solid fa-utensils mr-2"></i>Reto final: <span class="em" style="color:var(--lime)">Funciones</span>
+      </h2>
+    </div>
+    <div class="reto-card p-6 md:p-10 rounded-2xl max-w-3xl text-left w-full">
+      <ol class="text-lg text-slate-200 space-y-3 list-decimal list-inside marker:text-yellow-400 marker:font-bold mb-5">
+        <li>Define una función <strong>promedio</strong> que reciba una lista de notas.</li>
+        <li>Que devuelva (<code>return</code>) la suma dividida entre la cantidad de notas.</li>
+        <li>Llámala con <code>[3.5, 4.2, 2.8, 3.9]</code> e imprime el resultado.</li>
+        <li>Extra: usa un <code>if</code> para decir si el grupo aprobó (≥ 3.0).</li>
+      </ol>
+      <div class="ide-window">
+        <div class="ide-header">
+          <div class="ide-dots"><div class="ide-dot red"></div><div class="ide-dot yellow"></div><div class="ide-dot green"></div></div>
+          <button class="run-btn" onclick="runCode('code-reto-func','out-reto-func')"><i class="fa-solid fa-play"></i> Ejecutar Mi Reto</button>
+        </div>
+        <textarea id="code-reto-func" class="python-editor"># 1. Define tu función aquí
+
+
+# 2. Llámala e imprime el resultado
+</textarea>
+        <div id="out-reto-func" class="console-output code-font text-sm"></div>
+      </div>
+      <div class="sol mt-4">
+        <button class="sol-btn" onclick="this.parentElement.classList.toggle('open')">Ver una solución posible</button>
+        <pre>def promedio(notas):
+    return sum(notas) / len(notas)
+
+resultado = promedio([3.5, 4.2, 2.8, 3.9])
+print("Promedio:", resultado)
+
+if resultado >= 3.0:
+    print("El grupo aprobó")
+else:
+    print("El grupo no aprobó")</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-block="Módulo 5 · Automatización" data-title="Antes de automatizar" data-sub="Qué necesitas tener listo">
+  <div class="slide-scroll wrapA" style="text-align:center">
+    <span class="eyebrow">Antes del módulo 5</span>
+    <h2>Ya sabes <span class="hl">de qué se trata</span>.<br>Ahora montamos tu <span class="hl">taller</span></h2>
+    <p class="lead" style="margin:14px auto 0;max-width:640px;color:var(--muted);font-size:15px;line-height:1.55">
+      Para automatizar procesos instalamos, paso a paso y en vivo, todo lo que usarás el resto del curso. Llega con esto listo:</p>
+    <div class="checks">
+      <div class="check"><b>Tu computador</b><span>Windows, Mac o Linux · con permisos de instalación</span></div>
+      <div class="check"><b>Cuenta de correo</b><span>la misma para GitHub y los agentes</span></div>
+      <div class="check"><b>Conexión estable</b><span>descargaremos varios instaladores</span></div>
+      <div class="check"><b>Espacio libre</b><span>al menos 5 GB en disco</span></div>
+    </div>
+    <p class="note-foot"><b>Módulo 5:</b> instalación guiada de las herramientas y primeras automatizaciones con agentes de IA.</p>
+  </div>
+</section>
+
+<section class="slide" data-block="Módulo 5 · Automatización" data-title="Tu estación de trabajo" data-sub="Las 7 piezas y su orden">
+  <div class="slide-scroll ag-wrap">
+    <div class="slide-head">
+      <span class="eyebrow">Módulo 5 · Tu taller de automatización</span>
+      <h2>Tu <span class="hl">estación de trabajo</span></h2>
+      <p class="lead">Siete piezas, cada una con un papel distinto. Se instalan <b>en este orden</b> porque unas dependen de otras. Toca una tarjeta para ir directo a su instalación.</p>
+    </div>
+    <div class="tool-grid">
+      <div class="ag-card t-python" onclick="go(36,'python')">
+        <span class="step-idx">01</span>
+        <div class="ag-logo"><i class="fa-brands fa-python"></i></div>
+        <h3>Python</h3><div class="maker">El lenguaje</div>
+        <div class="see">Ver instalación →</div>
+      </div>
+      <div class="ag-card t-vscode" onclick="go(36,'vscode')">
+        <span class="step-idx">02</span>
+        <div class="ag-logo"><i class="fa-solid fa-code"></i></div>
+        <h3>VS Code</h3><div class="maker">El editor</div>
+        <div class="see">Ver instalación →</div>
+      </div>
+      <div class="ag-card t-node" onclick="go(36,'node')">
+        <span class="step-idx">03</span>
+        <div class="ag-logo"><i class="fa-brands fa-node-js"></i></div>
+        <h3>Node.js</h3><div class="maker">Requisito de los agentes</div>
+        <div class="see">Ver instalación →</div>
+      </div>
+      <div class="ag-card t-claude" onclick="go(36,'claude')">
+        <span class="step-idx">04</span>
+        <div class="ag-logo">✳</div>
+        <h3>Claude Code</h3><div class="maker">Agente · Anthropic</div>
+        <div class="see">Ver instalación →</div>
+      </div>
+      <div class="ag-card t-codebuff" onclick="go(36,'codebuff')">
+        <span class="step-idx">05</span>
+        <div class="ag-logo">CB</div>
+        <h3>Codebuff</h3><div class="maker">Agente · alternativa</div>
+        <div class="see">Ver instalación →</div>
+      </div>
+      <div class="ag-card t-git" onclick="go(36,'git')">
+        <span class="step-idx">06</span>
+        <div class="ag-logo"><i class="fa-brands fa-git-alt"></i></div>
+        <h3>Git</h3><div class="maker">Control de versiones</div>
+        <div class="see">Ver instalación →</div>
+      </div>
+      <div class="ag-card t-github" onclick="go(36,'github')">
+        <span class="step-idx">07</span>
+        <div class="ag-logo"><i class="fa-brands fa-github"></i></div>
+        <h3>GitHub</h3><div class="maker">Tu código en la nube</div>
+        <div class="see">Ver instalación →</div>
+      </div>
+      <div class="ag-card" style="border-style:dashed;cursor:default">
+        <span class="step-idx">✓</span>
+        <div class="ag-logo" style="background:rgba(0,245,212,.12);color:var(--accent)"><i class="fa-solid fa-clipboard-check"></i></div>
+        <h3>Verificación</h3><div class="maker">Al final del bloque</div>
+        <div class="see" style="color:var(--muted)">Que a todos les funcione</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" id="installSlide" data-block="Módulo 5 · Automatización" data-title="Instalación paso a paso" data-sub="Terminal en vivo, herramienta por herramienta">
+  <div class="slide-scroll inst2" id="instWrap">
+    <div class="slide-head">
+      <span class="eyebrow">Instalación paso a paso</span>
+      <h2 id="instTitle">Instala <span class="hl">Python</span></h2>
+    </div>
+    <div class="inst-tabs" id="instTabs">
+      <button class="inst-tab" data-key="python"><span class="tl" style="background:var(--python)">Py</span> Python</button>
+      <button class="inst-tab" data-key="vscode"><span class="tl" style="background:var(--vscode)">&lt;&gt;</span> VS Code</button>
+      <button class="inst-tab" data-key="node"><span class="tl" style="background:var(--node)">JS</span> Node.js</button>
+      <button class="inst-tab" data-key="claude"><span class="tl" style="background:var(--claude)">✳</span> Claude Code</button>
+      <button class="inst-tab" data-key="codebuff"><span class="tl" style="background:var(--codebuff)">CB</span> Codebuff</button>
+      <button class="inst-tab" data-key="git"><span class="tl" style="background:var(--git)">⑂</span> Git</button>
+      <button class="inst-tab" data-key="github"><span class="tl" style="background:var(--github)">GH</span> GitHub</button>
+    </div>
+    <div class="inst-body2">
+      <div class="term">
+        <div class="term-bar"><span class="tl-dot d1"></span><span class="tl-dot d2"></span><span class="tl-dot d3"></span><span class="term-title" id="termTitle">terminal</span></div>
+        <div class="term-body" id="termBody"></div>
+      </div>
+      <div class="inst-side">
+        <div class="inst-meta2" id="instMeta"></div>
+        <ol class="inst-steps" id="instSteps"></ol>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-block="Módulo 5 · Automatización" data-title="Otros agentes" data-sub="El mapa completo de alternativas">
+  <div class="slide-scroll ag-wrap">
+    <div class="slide-head">
+      <span class="eyebrow">Para tu contexto</span>
+      <h2>No son los únicos: <span class="hl">el mapa completo</span></h2>
+      <p class="lead">Instalamos dos agentes porque con dos basta para aprender a dirigirlos. Estos son otros que verás mencionados: la lógica de uso es la misma en todos.</p>
+    </div>
+    <div class="ag-others" style="margin-top:26px">
+      <div class="ol">Otras opciones · <b>alternativas de agentes de IA para código</b></div>
+      <div class="ag-others-grid">
+        <span class="oth"><i style="background:#19c37d">Cx</i> Codex · OpenAI</span>
+        <span class="oth"><i style="background:#4285f4">Ag</i> Antigravity · Google</span>
+        <span class="oth"><i style="background:#0d0d0d">Cu</i> Cursor</span>
+        <span class="oth"><i style="background:#6e5494">GC</i> GitHub Copilot</span>
+        <span class="oth"><i style="background:#09b6a2">W</i> Windsurf</span>
+        <span class="oth"><i style="background:#3a3f4b">Cl</i> Cline</span>
+        <span class="oth"><i style="background:#4285f4">G</i> Gemini CLI</span>
+        <span class="oth"><i style="background:#14b8a6">Ai</i> Aider</span>
+        <span class="oth"><i style="background:#1f6feb">Ct</i> Continue</span>
+        <span class="oth"><i style="background:#f26207">R</i> Replit</span>
+      </div>
+    </div>
+    <div class="duo" style="margin-top:22px">
+      <div class="pane now">
+        <span class="tag">Lo que de verdad importa</span>
+        <h3>Saber dirigir, no memorizar marcas</h3>
+        <p>Qué pedirle, cómo verificar lo que entrega y entender el código que produce. Eso se transfiere a cualquier agente que salga el año que viene.</p>
+      </div>
+      <div class="pane gold">
+        <span class="tag">Advertencia</span>
+        <h3>El agente se equivoca</h3>
+        <p>Inventa nombres de funciones, asume columnas que no existen y a veces "arregla" cosas que no debía. Por eso el siguiente bloque —los fundamentos— no es opcional.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-block="Módulo 5 · Automatización" data-title="Verificación final" data-sub="Checklist antes de programar">
+  <div class="slide-scroll wrapA" style="text-align:center">
+    <span class="eyebrow">Verificación final</span>
+    <h2>Todo listo para <span class="hl">empezar a programar</span></h2>
+    <p class="lead" style="margin:14px auto 0;max-width:640px;color:var(--muted);font-size:15px;line-height:1.55">
+      Abre una terminal y comprueba uno por uno. Si algo falla, lo arreglamos <b>ahora</b>: el resto del curso depende de esto.</p>
+    <div class="checks">
+      <div class="check"><b>Python</b><span>python --version</span></div>
+      <div class="check"><b>VS Code</b><span>extensiones Python + Jupyter</span></div>
+      <div class="check"><b>Node.js</b><span>node --version</span></div>
+      <div class="check"><b>Claude Code</b><span>claude → sesión iniciada</span></div>
+      <div class="check"><b>Codebuff</b><span>codebuff → sesión iniciada</span></div>
+      <div class="check"><b>Git</b><span>git config --list</span></div>
+      <div class="check"><b>GitHub</b><span>cuenta + repo curso-datos</span></div>
+      <div class="check"><b>Carpeta</b><span>curso-datos abierta en VS Code</span></div>
+    </div>
+    <div class="hero-cta" style="opacity:1;animation:none;margin-top:30px">
+      <button class="btn-primary" onclick="go(16)">Empezar con Python →</button>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-block="Módulo 6 · Ética y Proyecto" data-title="Ética y proyecto · por completar" data-sub="Material pendiente">
+  <div class="slide-scroll wrapA">
+    <div class="slide-head">
+      <span class="eyebrow">Módulo 6 · en construcción</span>
+      <h2><span class="hl">Ética</span>, límites y proyecto integrado</h2>
+      <p class="lead">Qué puede y qué no puede hacer una IA, qué riesgos asumes al usarla y cómo cerrar el curso con un proyecto propio.</p>
+    </div>
+    <div class="duo">
+      <div class="pane now">
+        <span class="tag">Contenido previsto</span>
+        <h3>Qué veremos en este módulo</h3>
+        <ul>
+          <li>Alucinaciones y verificación de fuentes</li>
+          <li>Privacidad y datos sensibles</li>
+          <li>Sesgos y responsabilidad profesional</li>
+          <li>Proyecto integrado final</li>
+        </ul>
+      </div>
+      <div class="pane">
+        <span class="tag">Pendiente</span>
+        <h3>Material en preparación</h3>
+        <ul>
+          <li>Diapositivas de concepto</li>
+          <li>Demostración en vivo</li>
+          <li>Ejercicio práctico guiado</li>
+        </ul>
+      </div>
+    </div>
+    <p class="note-foot"><b>TODO:</b> añadir aquí las diapositivas del módulo 6.</p>
+  </div>
+</section>
+
+<section class="slide s-py" data-block="Cierre" data-title="Cierre" data-sub="Lo que sigue">
+  <div class="py-stage flex flex-col justify-center items-center text-center" style="background:transparent">
+    <span class="reveal kicker mb-4">Cierre del recorrido</span>
+    <h2 class="reveal serif-title text-4xl md:text-6xl mb-6 text-white max-w-4xl">
+      ¡Has dado tu <span style="color:var(--lime)">primer paso</span>!
+    </h2>
+    <p class="reveal text-lg md:text-xl text-slate-300 mb-8 max-w-2xl leading-relaxed">
+      Ya entiendes qué es la IA, tienes tu estación de trabajo montada y sabes escribir
+      <span class="em">código de verdad</span>. Con esto puedes leer, entender y modificar lo que te entregue cualquier agente.
+    </p>
+    <div class="reveal grid grid-cols-1 md:grid-cols-4 gap-3 max-w-5xl w-full text-left mb-8">
+      <div class="p-4 rounded-xl border border-slate-700 bg-slate-800/40"><p class="font-bold" style="color:var(--lime)">Hoy dominas</p><p class="text-sm text-slate-400 mt-1">variables · tipos · listas · diccionarios · condicionales · bucles · funciones</p></div>
+      <div class="p-4 rounded-xl border border-slate-700 bg-slate-800/40"><p class="font-bold" style="color:var(--sky)">Lo que sigue</p><p class="text-sm text-slate-400 mt-1">pandas: abrir Excel y CSV, limpiar y transformar datos</p></div>
+      <div class="p-4 rounded-xl border border-slate-700 bg-slate-800/40"><p class="font-bold" style="color:var(--amber)">Después</p><p class="text-sm text-slate-400 mt-1">gráficos, tableros y automatización de reportes</p></div>
+      <div class="p-4 rounded-xl border border-slate-700 bg-slate-800/40"><p class="font-bold" style="color:var(--clay)">Al final</p><p class="text-sm text-slate-400 mt-1">tu propio aplicativo publicado con GitHub Pages</p></div>
+    </div>
+    <div class="reveal p-4 rounded-lg text-sm text-slate-300 max-w-3xl mb-8" style="background:rgba(31,93,76,.25);border-left:4px solid var(--lime)">
+      <strong>Tarea para la próxima clase:</strong> pídele a tu agente que te explique, línea por línea, uno de los retos que resolviste hoy. Si algo de su explicación no te cuadra, tráelo a clase.
+    </div>
+    <div class="reveal flex gap-4 flex-wrap justify-center">
+      <button onclick="go(0)" class="px-6 py-3 rounded-full font-bold transition-all hover:scale-105"
+              style="background:var(--lime);color:var(--ink);box-shadow:0 12px 30px -10px rgba(200,242,90,.5)">
+        <i class="fa-solid fa-rotate-left mr-2"></i> Volver al inicio
+      </button>
+    </div>
+    <p class="reveal mt-8" style="font-family:var(--mono);font-size:.72rem;color:rgba(245,239,228,.55);letter-spacing:.18em;text-transform:uppercase">
+      Trabajo Científico · @TCientifico · Democratizando la ciencia de datos
+    </p>
+  </div>
+</section>
+
+</div>
+
+<button id="prev" class="nav-btn" aria-label="Anterior"><span class="arr">‹</span><span class="lbl">Anterior</span></button>
+<button id="next" class="nav-btn" aria-label="Siguiente"><span class="lbl">Siguiente</span><span class="arr">›</span></button>
+<div id="navHint"><span>Navega</span><kbd>←</kbd><kbd>→</kbd></div>
+
+<script>
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const mobileMQ = window.matchMedia('(max-width:820px)');
+
+/* ================================================================
+   FONDO NEURAL (canvas)
+   ================================================================ */
+(function(){
+  const cv = document.getElementById('net'); if(!cv) return;
+  const ctx = cv.getContext('2d');
+  let w, h, nodes, raf;
+  const COUNT = 58;
+  function resize(){ w = cv.width = innerWidth; h = cv.height = innerHeight; }
+  function init(){
+    nodes = [];
+    for(let i=0;i<COUNT;i++) nodes.push({ x:Math.random()*w, y:Math.random()*h, vx:(Math.random()-.5)*.35, vy:(Math.random()-.5)*.35 });
+  }
+  function tick(){
+    ctx.clearRect(0,0,w,h);
+    for(const n of nodes){ n.x+=n.vx; n.y+=n.vy; if(n.x<0||n.x>w) n.vx*=-1; if(n.y<0||n.y>h) n.vy*=-1; }
+    for(let i=0;i<nodes.length;i++){
+      const a = nodes[i];
+      for(let j=i+1;j<nodes.length;j++){
+        const b = nodes[j]; const dx=a.x-b.x, dy=a.y-b.y; const d=Math.hypot(dx,dy);
+        if(d<130){ ctx.strokeStyle='rgba(0,245,212,'+(0.14*(1-d/130))+')'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); }
+      }
+      ctx.fillStyle='rgba(0,245,212,.55)'; ctx.beginPath(); ctx.arc(a.x,a.y,1.6,0,6.283); ctx.fill();
+    }
+    raf = requestAnimationFrame(tick);
+  }
+  function start(){ cancelAnimationFrame(raf); if(!mobileMQ.matches) tick(); }
+  addEventListener('resize', () => { resize(); init(); });
+  document.addEventListener('visibilitychange', () => { if(document.hidden) cancelAnimationFrame(raf); else start(); });
+  resize(); init(); start();
+})();
+
+/* ================================================================
+   DATOS DE INSTALACIÓN (terminal que escribe sola)
+   ================================================================ */
+const installs = {
+  python:{ name:'Python', brand:'#4b8bbe', kind:'app', promptChar:'▸',
+    meta:[['Descarga','python.org'],['Versión','3.12 o superior']],
+    lines:[
+      {cmd:'Descargar  →  python.org/downloads'},
+      {cmd:'Ejecutar el instalador'},
+      {cmd:'☑  Add python.exe to PATH'},
+      {cmd:'python --version', out:'Python 3.13.2', ok:true}
+    ],
+    steps:[
+      'Entra a <b>python.org/downloads</b><small>El botón amarillo descarga la última versión estable.</small>',
+      'Ejecuta el instalador descargado<small>En Mac: abre el archivo .pkg y sigue el asistente.</small>',
+      'Marca la casilla <code>Add python.exe to PATH</code><small>Está abajo en la primera pantalla — es el paso que más se olvida.</small>',
+      'Haz clic en <code>Install Now</code> y espera',
+      'Abre una terminal<small>Windows: "PowerShell" · Mac: "Terminal".</small>',
+      'Verifica con <code>python --version</code><small>En Mac usa <code>python3 --version</code>.</small>'
+    ]},
+  vscode:{ name:'Visual Studio Code', brand:'#0098ff', kind:'app', promptChar:'▸',
+    meta:[['Descarga','code.visualstudio.com'],['Extensiones','Python + Jupyter']],
+    lines:[
+      {cmd:'Descargar  →  code.visualstudio.com'},
+      {cmd:'Instalar con opciones por defecto'},
+      {cmd:'Extensiones  ·  Ctrl + Shift + X'},
+      {cmd:'Instalar "Python" (Microsoft)', out:'✓ instalada', ok:true},
+      {cmd:'Instalar "Jupyter" (Microsoft)', out:'✓ instalada', ok:true},
+      {cmd:'Archivo → Abrir carpeta → curso-datos', out:'✓ carpeta de trabajo lista', ok:true}
+    ],
+    steps:[
+      'Entra a <b>code.visualstudio.com</b> y descarga para tu sistema',
+      'Instala con las opciones por defecto<small>Marca "Abrir con Code" en el menú contextual.</small>',
+      'Abre el panel de extensiones<small>Icono de cuadros o <code>Ctrl+Shift+X</code>.</small>',
+      'Instala la extensión <code>Python</code> (Microsoft)',
+      'Instala la extensión <code>Jupyter</code> (Microsoft)<small>Para trabajar con notebooks dentro del editor.</small>',
+      'Crea y abre la carpeta <b>curso-datos</b><small>Ahí vivirá todo lo del curso.</small>'
+    ]},
+  node:{ name:'Node.js', brand:'#3c873a', kind:'app', promptChar:'▸',
+    meta:[['Descarga','nodejs.org'],['Versión','LTS']],
+    lines:[
+      {cmd:'Descargar  →  nodejs.org  (versión LTS)'},
+      {cmd:'Instalar con opciones por defecto'},
+      {cmd:'Cerrar y volver a abrir la terminal'},
+      {cmd:'node --version', out:'v22.11.0', ok:true},
+      {cmd:'npm --version', out:'10.9.0', ok:true}
+    ],
+    steps:[
+      'Entra a <b>nodejs.org</b><small>Descarga la versión <b>LTS</b> (soporte extendido).</small>',
+      'Ejecuta el instalador con las opciones por defecto<small>Siguiente → Siguiente → Instalar.</small>',
+      'Cierra y vuelve a abrir la terminal<small>Necesario para que reconozca los nuevos comandos.</small>',
+      'Verifica <code>node --version</code> y <code>npm --version</code><small>Ambos deben responder con un número.</small>',
+      '¿Para qué sirve? Los agentes de IA se instalan con <b>npm</b>, que viene con Node.'
+    ]},
+  claude:{ name:'Claude Code', brand:'#d97757', kind:'cli', promptChar:'$',
+    meta:[['Requisito','Node.js 18+'],['Costo','Plan de pago']],
+    lines:[
+      {cmd:'node --version', out:'v22.11.0', ok:true},
+      {cmd:'npm install -g @anthropic-ai/claude-code', out:'✓ instalado', ok:true},
+      {cmd:'cd curso-datos && claude', out:'✓ sesión iniciada · listo', ok:true}
+    ],
+    steps:[
+      'Crea tu cuenta en <b>claude.ai</b> si aún no la tienes',
+      'Instala: <code>npm install -g @anthropic-ai/claude-code</code><small>Requiere el Node.js del paso anterior.</small>',
+      'Ve a tu carpeta: <code>cd curso-datos</code><small>O usa la terminal integrada de VS Code.</small>',
+      'Inícialo con <code>claude</code>',
+      'Inicia sesión cuando lo pida<small>Se abre el navegador para autorizar el acceso.</small>',
+      'Pruébalo: "crea un archivo hola.py que salude por pantalla"'
+    ]},
+  codebuff:{ name:'Codebuff', brand:'#19c37d', kind:'cli', promptChar:'$',
+    meta:[['Requisito','Node.js'],['Costo','Plan gratuito inicial']],
+    lines:[
+      {cmd:'npm install -g codebuff', out:'✓ instalado', ok:true},
+      {cmd:'cd curso-datos && codebuff', out:'✓ sesión iniciada · listo', ok:true}
+    ],
+    steps:[
+      'Instala: <code>npm install -g codebuff</code><small>Usa el mismo Node.js que ya instalamos.</small>',
+      'Ve a tu carpeta: <code>cd curso-datos</code>',
+      'Ejecuta <code>codebuff</code>',
+      'Inicia sesión la primera vez<small>Te dará un enlace para crear la cuenta.</small>',
+      'Repite el mismo ejercicio que con Claude Code<small>Así comparas cómo responde cada agente.</small>'
+    ]},
+  git:{ name:'Git', brand:'#f05133', kind:'cli', promptChar:'$',
+    meta:[['Descarga','git-scm.com'],['Para qué','Historial del código']],
+    lines:[
+      {cmd:'git --version', out:'git version 2.47.1', ok:true},
+      {cmd:'git config --global user.name "Tu Nombre"', out:'✓ guardado', ok:true},
+      {cmd:'git config --global user.email "tu@correo.com"', out:'✓ guardado', ok:true},
+      {cmd:'git config --list', out:'user.name=Tu Nombre · user.email=tu@correo.com', ok:true}
+    ],
+    steps:[
+      'Descarga desde <b>git-scm.com/downloads</b><small>En Mac suele venir: prueba primero <code>git --version</code>.</small>',
+      'Instala con las opciones por defecto<small>Siguiente en todas las pantallas.</small>',
+      'Verifica en una terminal nueva: <code>git --version</code>',
+      'Configura tu nombre<small><code>git config --global user.name "Tu Nombre"</code></small>',
+      'Configura tu correo<small>Usa el mismo con el que crearás GitHub.</small>',
+      'Revisa todo con <code>git config --list</code>'
+    ]},
+  github:{ name:'GitHub', brand:'#8b5cf6', kind:'app', promptChar:'▸',
+    meta:[['Sitio','github.com'],['Costo','Gratis']],
+    lines:[
+      {cmd:'Entrar  →  github.com  ·  Sign up'},
+      {cmd:'Registrarse con el mismo correo de Git'},
+      {cmd:'Verificar el correo con el código'},
+      {cmd:'New repository  →  curso-datos', out:'✓ repositorio creado', ok:true}
+    ],
+    steps:[
+      'Entra a <b>github.com</b> y haz clic en <b>Sign up</b>',
+      'Regístrate con el mismo correo que configuraste en Git<small>Elige un usuario profesional: te acompañará años.</small>',
+      'Verifica tu correo con el código que te envían',
+      'Crea tu primer repositorio: <b>New</b> → <code>curso-datos</code><small>Público y con un README.</small>',
+      'Al final del curso publicaremos aquí tus aplicativos con GitHub Pages'
+    ]}
+};
+let currentTool = 'python';
+let typeToken = 0;
+
+function loadTool(key){
+  currentTool = key;
+  const a = installs[key];
+  const wrap = document.getElementById('instWrap');
+  wrap.style.setProperty('--brand', a.brand);
+  document.getElementById('instTitle').innerHTML = 'Instala <span class="hl" style="color:'+a.brand+'">'+a.name+'</span>';
+  document.getElementById('termTitle').textContent = a.kind === 'app' ? 'instalador' : 'bash';
+  document.querySelectorAll('#instTabs .inst-tab').forEach(t => t.classList.toggle('active', t.dataset.key === key));
+  document.getElementById('instMeta').innerHTML = a.meta.map(m => '<div class="meta-chip"><div class="k">'+m[0]+'</div><div class="v">'+m[1]+'</div></div>').join('');
+  document.getElementById('instSteps').innerHTML = a.steps.map((s,i) => '<li style="animation-delay:'+(i*.08+.1)+'s"><span class="sn">'+(i+1)+'</span><span>'+s+'</span></li>').join('');
+  typeTerminal(a, ++typeToken);
+}
+async function typeTerminal(a, my){
+  const term = document.getElementById('termBody');
+  term.innerHTML = ''; await sleep(200);
+  for(const ln of a.lines){
+    if(my !== typeToken) return;
+    const row = document.createElement('div'); row.className = 'term-line';
+    const p = document.createElement('span'); p.className = 'term-prompt'; p.textContent = a.promptChar + ' ';
+    const c = document.createElement('span'); c.className = 'term-cmd';
+    row.appendChild(p); row.appendChild(c); term.appendChild(row);
+    for(let i = 0; i < ln.cmd.length; i++){
+      if(my !== typeToken) return;
+      c.textContent += ln.cmd[i]; term.scrollTop = term.scrollHeight;
+      await sleep(a.kind === 'app' ? 12 : 24);
+    }
+    row.classList.add('done'); await sleep(220);
+    if(my !== typeToken) return;
+    if(ln.out){
+      const o = document.createElement('div'); o.className = 'term-out' + (ln.ok ? ' ok' : '');
+      o.textContent = ln.out; term.appendChild(o); term.scrollTop = term.scrollHeight;
+    }
+    await sleep(300);
+  }
+}
+document.querySelectorAll('#instTabs .inst-tab').forEach(t => t.addEventListener('click', () => loadTool(t.dataset.key)));
+
+/* ================================================================
+   MOTOR DE DIAPOSITIVAS
+   ================================================================ */
+const slides = [...document.querySelectorAll('.slide')];
+const total = slides.length;
+let current = 0;
+const progress = document.getElementById('progress');
+const curNum = document.getElementById('curNum');
+const blockTag = document.getElementById('blockTag');
+const prevBtn = document.getElementById('prev');
+const nextBtn = document.getElementById('next');
+document.getElementById('totNum').textContent = total;
+
+function render(){
+  slides.forEach((s,i) => {
+    s.classList.remove('active','prev');
+    if(i === current){ s.classList.add('active'); }
+    else if(i < current) s.classList.add('prev');
+  });
+  const s = slides[current];
+  const sc = s.querySelector('.slide-scroll, .py-stage');
+  if(sc) sc.scrollTop = 0;
+  progress.style.width = ((current+1)/total*100) + '%';
+  curNum.textContent = current + 1;
+  blockTag.textContent = s.dataset.block || '';
+  /* la portada va limpia: sin rótulo de bloque encima del título */
+  blockTag.classList.toggle('is-hidden', s.classList.contains('hero') || !s.dataset.block);
+  prevBtn.classList.toggle('is-disabled', current === 0);
+  nextBtn.classList.toggle('is-disabled', current === total-1);
+  if(s.id === 'installSlide') loadTool(currentTool);
+  /* CodeMirror necesita recalcular su tamaño al mostrarse una slide oculta */
+  setTimeout(() => {
+    s.querySelectorAll('.python-editor').forEach(ta => {
+      if(window.cmEditors && window.cmEditors[ta.id]) window.cmEditors[ta.id].refresh();
+    });
+  }, 60);
+  syncMenu();
+}
+function go(i, toolKey){
+  if(i < 0 || i >= total) return;
+  if(toolKey) currentTool = toolKey;
+  current = i; render();
+}
+function next(){ go(current+1); }
+function prev(){ go(current-1); }
+nextBtn.addEventListener('click', next);
+prevBtn.addEventListener('click', prev);
+document.addEventListener('keydown', e => {
+  if(e.target.closest('.CodeMirror, textarea')) return;   /* no navegar mientras se escribe código */
+  if(e.key === 'Escape'){ openMenu(false); return; }
+  if(e.key === 'ArrowRight' || e.key === 'PageDown'){ e.preventDefault(); next(); }
+  if(e.key === 'ArrowLeft'  || e.key === 'PageUp'){ e.preventDefault(); prev(); }
+  if(e.key === 'Home') go(0);
+  if(e.key === 'End') go(total-1);
+});
+let touchX = 0;
+document.addEventListener('touchstart', e => touchX = e.touches[0].clientX, {passive:true});
+document.addEventListener('touchend', e => {
+  if(e.target.closest('.CodeMirror, textarea, button, a')) return;
+  const dx = e.changedTouches[0].clientX - touchX;
+  if(Math.abs(dx) > 70){ dx < 0 ? next() : prev(); }
+}, {passive:true});
+
+/* ---------------- ÍNDICE ---------------- */
+const menuOverlay = document.getElementById('menuOverlay');
+const menuBody = document.getElementById('menuBody');
+(function buildMenu(){
+  let html = '', lastBlock = null;
+  slides.forEach((s,k) => {
+    const b = s.dataset.block || '';
+    if(b !== lastBlock){
+      if(lastBlock !== null) html += '</ul>';
+      html += '<div class="menu-group">'+b+'</div><ul class="menu-list">';
+      lastBlock = b;
+    }
+    html += '<li data-go="'+k+'"><span class="mn">'+String(k+1).padStart(2,'0')+'</span>'
+         +  '<span><span class="mt">'+(s.dataset.title||'')+'</span><span class="md">'+(s.dataset.sub||'')+'</span></span></li>';
+  });
+  html += '</ul>';
+  menuBody.innerHTML = html;
+  menuBody.querySelectorAll('li').forEach(li => li.onclick = () => { go(+li.dataset.go); openMenu(false); });
+})();
+function syncMenu(){
+  menuBody.querySelectorAll('li').forEach(li => li.classList.toggle('current', +li.dataset.go === current));
+}
+function openMenu(o){ menuOverlay.classList.toggle('open', o); if(o) syncMenu(); }
+document.getElementById('menuBtn').onclick = () => openMenu(true);
+document.getElementById('menuClose').onclick = () => openMenu(false);
+menuOverlay.onclick = e => { if(e.target === menuOverlay) openMenu(false); };
+
+/* ---------------- TARJETAS DE CONCEPTO ---------------- */
+document.querySelectorAll('#defCards .def-card').forEach(c => c.onclick = () => c.classList.toggle('open'));
+
+/* ================================================================
+   DEMO · TOKENS
+   ================================================================ */
+const TOKENS = [
+  {t:'La',       c:[['La',62],['Bogotá',18],['Colombia',12],['El',8]]},
+  {t:'capital',  c:[['capital',71],['ciudad',14],['respuesta',9],['pregunta',6]]},
+  {t:'de',       c:[['de',88],['del',7],['es',3],['en',2]]},
+  {t:'Colombia', c:[['Colombia',94],['ese',3],['dicho',2],['aquel',1]]},
+  {t:'es',       c:[['es',91],['fue',5],['sería',2],['está',2]]},
+  {t:'Bogotá',   c:[['Bogotá',87],['Medellín',6],['Cali',4],['Lima',3]]},
+  {t:'.',        c:[['.',79],[',',11],['D.C.',7],['!',3]]}
+];
+let tokI = 0, tokTimer = null;
+const tokText = document.getElementById('tokText');
+const tokCands = document.getElementById('tokCands');
+function tokRender(){
+  if(tokI === 0){
+    tokText.innerHTML = '<span class="ghost">Pulsa "Generar siguiente token" para empezar…</span>';
+    tokCands.innerHTML = '';
+    return;
+  }
+  tokText.innerHTML = TOKENS.slice(0,tokI).map(x => '<span class="t">'+x.t+'</span>').join('');
+  tokCands.innerHTML = TOKENS[tokI-1].c
+    .map((c,k) => '<span class="cand'+(k===0?' best':'')+'" style="animation-delay:'+(k*.06)+'s">'+c[0]+' · '+c[1]+'%</span>').join('');
+}
+function tokStep(){
+  if(tokI >= TOKENS.length){ clearInterval(tokTimer); tokTimer = null; document.getElementById('tokAuto').classList.remove('on'); return; }
+  tokI++; tokRender();
+}
+document.getElementById('tokStep').onclick = tokStep;
+document.getElementById('tokReset').onclick = () => {
+  clearInterval(tokTimer); tokTimer = null;
+  document.getElementById('tokAuto').classList.remove('on');
+  tokI = 0; tokRender();
+};
+document.getElementById('tokAuto').onclick = function(){
+  if(tokTimer){ clearInterval(tokTimer); tokTimer = null; this.classList.remove('on'); return; }
+  this.classList.add('on');
+  tokTimer = setInterval(tokStep, 750);
+};
+
+/* ================================================================
+   DEMO · ALGORITMO POR PASOS
+   ================================================================ */
+let algoN = 0;
+const algoBtn = document.getElementById('algoStep');
+const algoRunB = document.getElementById('algoRun');
+const algoOut = document.getElementById('algoOut');
+function algoPaint(){
+  document.querySelectorAll('#algoCode .cline[data-step]').forEach(l => {
+    l.classList.toggle('off', +l.dataset.step > algoN);
+  });
+  algoBtn.textContent = algoN >= 3 ? '✓ Algoritmo completo' : '▶ Mostrar paso ' + (algoN+1);
+  algoBtn.disabled = algoN >= 3;
+  algoRunB.disabled = algoN < 3;
+  algoRunB.classList.toggle('on', algoN >= 3);
+}
+algoBtn.onclick = () => { if(algoN < 3){ algoN++; algoPaint(); } };
+algoRunB.onclick = () => {
+  algoOut.textContent = '';
+  const pasos = ['▸ notas = [3.5, 4.2, 2.8, 3.9]','▸ promedio = 3.6','▸ 3.6 >= 3.0  →  verdadero','Aprobó ✅'];
+  pasos.forEach((p,k) => setTimeout(() => { algoOut.textContent += p + '\n'; }, k*450));
+};
+document.getElementById('algoReset').onclick = () => { algoN = 0; algoOut.textContent = ''; algoPaint(); };
+algoPaint();
+
+/* ================================================================
+   DEMO · PROMPT EN ESPAÑOL → PYTHON REAL
+   ================================================================ */
+const TAREAS = [
+  { prompt:'Tengo las ventas mensuales de mi negocio. Calcula el total y el promedio.',
+    code:`# Ventas de cada mes (en millones)
+ventas = [12.5, 9.8, 15.2, 11.0, 18.4, 14.1]
+
+total = sum(ventas)
+promedio = total / len(ventas)
+
+print("Total vendido:", total)
+print("Promedio mensual:", round(promedio, 2))` },
+  { prompt:'Con esas mismas ventas, dime cuál fue el mejor mes y cuánto se vendió.',
+    code:`meses  = ["Ene", "Feb", "Mar", "Abr", "May", "Jun"]
+ventas = [12.5, 9.8, 15.2, 11.0, 18.4, 14.1]
+
+mejor = max(ventas)                 # el valor más alto
+posicion = ventas.index(mejor)      # en qué lugar está
+
+print("El mejor mes fue:", meses[posicion])
+print("Con ventas de:", mejor)` },
+  { prompt:'Mi lista de clientes tiene registros repetidos. Límpiala y dime cuántos quedan.',
+    code:`clientes = ["Ana", "Luis", "Ana", "Sofía", "Luis", "Carlos"]
+
+unicos = list(set(clientes))        # set() elimina los repetidos
+
+print("Registros originales:", len(clientes))
+print("Clientes únicos:", len(unicos))
+print(unicos)` }
+];
+let tareaSel = null, demoTimer = null;
+const promptBox = document.getElementById('promptBox');
+const askBtn = document.getElementById('askBtn');
+const demoCode = document.getElementById('demoCode');
+const demoRun = document.getElementById('demoRun');
+const demoOut = document.getElementById('demoOut');
+
+function paintCode(txt){
+  return txt
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/(#[^\n]*)/g,'<span class="cm-c">$1</span>')
+    .replace(/("[^"]*")/g,'<span class="cm-s">$1</span>')
+    .replace(/\b(sum|len|max|round|print|set|list|index)\b(?=\()/g,'<span class="cm-f">$1</span>');
+}
+document.querySelectorAll('#chipRow .chipb').forEach(ch => {
+  ch.onclick = () => {
+    document.querySelectorAll('#chipRow .chipb').forEach(x => x.classList.remove('on'));
+    ch.classList.add('on');
+    tareaSel = +ch.dataset.i;
+    promptBox.innerHTML = '<span class="who2">👤 Tu prompt</span>' + TAREAS[tareaSel].prompt;
+    askBtn.disabled = false;
+    demoRun.disabled = true;
+    demoCode.innerHTML = '<span style="color:#8b94b3">Pulsa "Pedir el código a la IA"…</span>';
+    demoOut.textContent = '';
+  };
+});
+askBtn.onclick = () => {
+  if(tareaSel === null) return;
+  clearInterval(demoTimer);
+  const texto = TAREAS[tareaSel].code;
+  demoOut.textContent = '';
+  demoRun.disabled = true;
+  let k = 0;
+  demoTimer = setInterval(() => {
+    k += 4;
+    demoCode.innerHTML = paintCode(texto.slice(0,k)) + '<span style="color:var(--accent)">▋</span>';
+    if(k >= texto.length){
+      clearInterval(demoTimer);
+      demoCode.innerHTML = paintCode(texto);
+      demoRun.disabled = false;
+      demoRun.classList.add('on');
+    }
+  }, 14);
+};
+demoRun.onclick = () => { if(tareaSel !== null) runPython(TAREAS[tareaSel].code, demoOut); };
+
+/* ================================================================
+   CODEMIRROR + SKULPT (bloque de fundamentos)
+   ================================================================ */
+window.cmEditors = {};
+document.querySelectorAll('.python-editor').forEach(ta => {
+  window.cmEditors[ta.id] = CodeMirror.fromTextArea(ta, {
+    mode:"python", theme:"dracula", lineNumbers:true,
+    matchBrackets:true, indentUnit:4, viewportMargin:Infinity
+  });
+});
+
+function runPython(code, outEl){
+  outEl.innerHTML = '';
+  function outf(text){ outEl.innerHTML += text.replace(/</g,'&lt;'); }
+  function builtinRead(x){
+    if(Sk.builtinFiles === undefined || Sk.builtinFiles["files"][x] === undefined)
+      throw "No se encontró el módulo: '" + x + "'";
+    return Sk.builtinFiles["files"][x];
+  }
+  Sk.configure({ output:outf, read:builtinRead, __future__:Sk.python3 });
+  Sk.misceval.asyncToPromise(function(){
+    return Sk.importMainWithBody("<stdin>", false, code, true);
+  }).then(function(){
+    if(outEl.innerHTML === '') outEl.innerHTML = '<span style="color:#5b6b63">▸ se ejecutó sin errores (no imprimió nada)</span>';
+  }, function(err){
+    outEl.innerHTML += '<span style="color:#ff5f56;font-weight:700">\n[Error de Python]: </span><span style="color:#ff9a8f">' + err.toString() + '</span>';
+  });
+}
+function runCode(editorId, outputId){
+  const ed = window.cmEditors[editorId];
+  const code = ed ? ed.getValue() : document.getElementById(editorId).value;
+  runPython(code, document.getElementById(outputId));
+}
+
+/* arranque */
+render();
+</script>
+</body>
+</html>
