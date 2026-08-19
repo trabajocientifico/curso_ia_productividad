@@ -257,15 +257,15 @@ h2{ font-size:clamp(28px,4vw,52px); font-weight:700; line-height:1.08; letter-sp
 .mod-card{
   padding:18px 18px 16px; border-radius:18px; background:var(--surface);
   border:1px solid var(--line); position:relative; overflow:hidden;
-  transition:transform .3s, border-color .3s;
+  transition:transform .3s, border-color .3s, box-shadow .3s;
 }
 .mod-card::before{ content:""; position:absolute; inset:0 auto 0 0; width:3px; background:var(--accent); opacity:.5; }
 .mod-card:hover{ transform:translateY(-3px); border-color:rgba(0,245,212,.4); }
 .mod-card .mod-n{
   font-family:var(--font-mono); font-size:11px; font-weight:700; letter-spacing:.18em;
-  color:var(--accent); text-transform:uppercase;
+  color:#fff; text-transform:uppercase;
 }
-.mod-card h3{ font-size:17px; margin-top:7px; line-height:1.25; }
+.mod-card h3{ font-size:17px; margin-top:7px; line-height:1.25; color:#fff; }
 .mod-card p{ font-size:12.5px; color:var(--muted); margin-top:8px; line-height:1.45; }
 @media (max-width:900px){ .mod-grid{ grid-template-columns:repeat(2,1fr); } }
 @media (max-width:620px){ .mod-grid{ grid-template-columns:1fr; } }
@@ -282,13 +282,21 @@ h2{ font-size:clamp(28px,4vw,52px); font-weight:700; line-height:1.08; letter-sp
 .mod-card:hover::before{ opacity:1; }
 .mod-card::before{ transition:opacity .25s; }
 
-/* tarjetas de módulo aún no publicadas */
-.mod-card.is-soon{ opacity:.42; cursor:default; }
-.mod-card.is-soon:hover{ transform:none; border-color:var(--line); }
-.mod-card.is-soon::before{ background:var(--muted); opacity:.35; }
-.mod-soon{ display:inline-block; margin-left:8px; padding:2px 8px; border-radius:99px;
-  background:rgba(255,255,255,.06); border:1px solid var(--line);
-  color:var(--muted); font-size:8.5px; letter-spacing:.14em; vertical-align:middle; }
+/* movimiento en reposo: flotación muy leve, desfasada tarjeta a tarjeta,
+   para que la rejilla respire sin distraer durante la proyección */
+@keyframes modFloat{ 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-4px);} }
+@keyframes modGlow{ 0%,100%{ opacity:.35;} 50%{ opacity:.8;} }
+.mod-card{ animation:modFloat 7s ease-in-out infinite; will-change:transform; }
+.mod-card::before{ animation:modGlow 7s ease-in-out infinite; }
+.mod-grid .mod-card:nth-child(1),.mod-grid .mod-card:nth-child(1)::before{ animation-delay:0s; }
+.mod-grid .mod-card:nth-child(2),.mod-grid .mod-card:nth-child(2)::before{ animation-delay:-.9s; }
+.mod-grid .mod-card:nth-child(3),.mod-grid .mod-card:nth-child(3)::before{ animation-delay:-1.8s; }
+.mod-grid .mod-card:nth-child(4),.mod-grid .mod-card:nth-child(4)::before{ animation-delay:-2.7s; }
+.mod-grid .mod-card:nth-child(5),.mod-grid .mod-card:nth-child(5)::before{ animation-delay:-3.6s; }
+.mod-grid .mod-card:nth-child(6),.mod-grid .mod-card:nth-child(6)::before{ animation-delay:-4.5s; }
+/* al pasar el ratón la tarjeta se detiene y se eleva: el foco manda sobre la flotación */
+.mod-card:hover{ animation:none; transform:translateY(-6px); box-shadow:0 18px 40px -22px rgba(0,245,212,.55); }
+.mod-card:hover::before{ animation:none; }
 
 /* ==========================================================================
    ÍNDICE / MENÚ (estilo panel editorial de fundamentos)
@@ -543,31 +551,36 @@ h2{ font-size:clamp(28px,4vw,52px); font-weight:700; line-height:1.08; letter-sp
         <p>Qué es la IA, cómo "piensa" un modelo de lenguaje y en qué se diferencia una IA que responde de un agente que ejecuta.</p>
         <span class="mod-go">Entrar <i>&rarr;</i></span>
       </a>
-      <div class="mod-card is-soon">
-        <div class="mod-n">Módulo 2 <span class="mod-soon">Próximamente</span></div>
+      <a class="mod-card" href="index/modulo2.html">
+        <div class="mod-n">Módulo 2</div>
         <h3>Ingeniería de Prompts y Comunicación con IA</h3>
         <p>Cómo pedirle a una IA exactamente lo que necesitas: rol, contexto, formato de salida e iteración.</p>
-      </div>
-      <div class="mod-card is-soon">
-        <div class="mod-n">Módulo 3 <span class="mod-soon">Próximamente</span></div>
+        <span class="mod-go">Entrar <i>&rarr;</i></span>
+      </a>
+      <a class="mod-card" href="index/modulo3.html">
+        <div class="mod-n">Módulo 3</div>
         <h3>IA para la Gestión Documental y Comunicación Escrita</h3>
         <p>Redactar, resumir, revisar y estructurar documentos, correos e informes con apoyo de IA.</p>
-      </div>
-      <div class="mod-card is-soon">
-        <div class="mod-n">Módulo 4 <span class="mod-soon">Próximamente</span></div>
+        <span class="mod-go">Entrar <i>&rarr;</i></span>
+      </a>
+      <a class="mod-card" href="index/modulo4.html">
+        <div class="mod-n">Módulo 4</div>
         <h3>IA para el Análisis de Datos y Toma de Decisiones</h3>
         <p>Fundamentos de programación en Python desde cero, aplicados a analizar datos y decidir con evidencia.</p>
-      </div>
-      <div class="mod-card is-soon">
-        <div class="mod-n">Módulo 5 <span class="mod-soon">Próximamente</span></div>
+        <span class="mod-go">Entrar <i>&rarr;</i></span>
+      </a>
+      <a class="mod-card" href="index/modulo5.html">
+        <div class="mod-n">Módulo 5</div>
         <h3>Automatización de Procesos con IA</h3>
         <p>Instalar y usar agentes de IA en tu computador para que ejecuten tareas repetitivas por ti.</p>
-      </div>
-      <div class="mod-card is-soon">
-        <div class="mod-n">Módulo 6 <span class="mod-soon">Próximamente</span></div>
+        <span class="mod-go">Entrar <i>&rarr;</i></span>
+      </a>
+      <a class="mod-card" href="index/modulo6.html">
+        <div class="mod-n">Módulo 6</div>
         <h3>Ética, Limitaciones y Proyecto Integrado</h3>
         <p>Qué no puede hacer una IA, qué riesgos asumes al usarla y cómo cerrar el curso con un proyecto propio.</p>
-      </div>
+        <span class="mod-go">Entrar <i>&rarr;</i></span>
+      </a>
     </div>
     <p class="note-foot"><b>Regla de la casa:</b> nadie avanza solo. Si algo no funciona, lo resolvemos en vivo antes de pasar al siguiente módulo.</p>
   </div>
